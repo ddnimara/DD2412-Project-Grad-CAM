@@ -1,6 +1,6 @@
 import torchvision.models as models
 
-def getResNetModel(number=18, pretrained= True):
+def getResNetModel(number=18, pretrained=True):
     if number == 18:
         return models.resnet18(pretrained=pretrained)
     elif number == 34:

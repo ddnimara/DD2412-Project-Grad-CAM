@@ -6,13 +6,15 @@ from model import *
 from utilities import *
 from PIL import Image
 import torchvision.transforms.functional as TF
+import matplotlib.pyplot as plt
+
 class guidedBackProp:
 
     def __init__(self,model):
         self.model = model
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.hooks = []
-        #self.populateHooks()
+        self.populateHooks()
 
     def removeHooks(self):
         for hooks in self.hooks:
@@ -29,9 +31,7 @@ class guidedBackProp:
     def forward(self,image):
         self.image = image.requires_grad_()
         self.logits = self.model(image)
-        print('logit size', self.logits.size())
         self.probs = F.softmax(self.logits, dim=1)  # dim is [batch_size, classes]
-        print('probs size', self.probs.size())
 
 
     def populateHooks(self):
@@ -63,21 +63,22 @@ class guidedBackProp:
 
     def generateMapK(self,image, k=1):
         """ Work in Progress: (should print heatmap). Returns gradient maps on the 'k' most likely classes """
-        self.reset()
+        #self.reset()
         self.forward(image)
         map = []
         mostLikelyClasses = self.getTopK(k)
         for classes in mostLikelyClasses:
             class_label = torch.tensor(np.array([classes])).type(torch.int64)
             self.backward(class_label)
-            map.append(self.image.grad)  # in guided backprop we want dy/dx so we need the grad of the image
+            map.append(self.image.grad.clone())  # in guided backprop we want dy/dx so we need the grad of the image
+            self.image.grad.zero_()
         print('gradient', map[0].size())
         return map
 
 
     def generateMapClass(self,image, classLabel = 242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        self.reset()
+        #self.reset()
         self.forward(image)
         map = []
         class_label = torch.tensor(np.array([classLabel])).type(torch.int64)
@@ -89,23 +90,21 @@ class guidedBackProp:
 
 def test(k = 1):
     model = getResNetModel(152)
+    model.eval()
     gbb = guidedBackProp(model)
     url = "cat_dog.png"
     imageOriginal = getImagePIL(url)
     image = processImage(imageOriginal)
     image = image.unsqueeze(0)  # add 'batch' dimension
-    gbb.forward(image)
-    best = gbb.getTopK(10)
-    dictionary = getImageNetClasses()
-    # print('best predictions', [dictionary[i] for i in best])
-    map = gbb.generateMapClass(image)
-    for heatmap in map:
+    map = gbb.generateMapK(image,k)
+    imagenetClasses = getImageNetClasses()
+    topk = gbb.getTopK(k)
+    print('top k', topk)
+    for i in range (len(map)):
+        heatmap = map[i]
         gradientNumpy = gradientToImage(heatmap)
-        hm = Image.fromarray(np.uint8(gradientNumpy))
-        # print('hm size',hm.size)
-        hm.show()
-        res = Image.blend(imageOriginal, hm, 0.6)
-        res.show()
-test()
-
+        plt.imshow(np.uint8(gradientNumpy))
+        plt.title(imagenetClasses[topk[i]])
+        plt.show()
+test(5)
 
