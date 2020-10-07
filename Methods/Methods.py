@@ -1,10 +1,9 @@
 
 import numpy as np
-import cv2
 import torch
 from torch.nn import functional as F
 from model import *
-import torchvision.transforms as transforms
+from utilities import *
 from PIL import Image
 import torchvision.transforms.functional as TF
 class guidedBackProp:
@@ -13,7 +12,7 @@ class guidedBackProp:
         self.model = model
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.hooks = []
-        self.populateHooks()
+        #self.populateHooks()
 
     def removeHooks(self):
         for hooks in self.hooks:
@@ -30,7 +29,10 @@ class guidedBackProp:
     def forward(self,image):
         self.image = image.requires_grad_()
         self.logits = self.model(image)
-        self.probs = F.softmax(self.logits, dim = 1)  # dim is [batch_size, classes]
+        print('logit size', self.logits.size())
+        self.probs = F.softmax(self.logits, dim=1)  # dim is [batch_size, classes]
+        print('probs size', self.probs.size())
+
 
     def populateHooks(self):
         """ Populate Hooks based on image (clip negative gradients on relu modules) """
@@ -45,13 +47,13 @@ class guidedBackProp:
         print("Probabiltiies descending", self.probs.sort(dim=1, descending=True))  # returns list [,] with [0] -> probs
                                                                                     # and [1] -> corresponding indeces
     def getTopK(self,k):
-        """ Returns top k classes (based on the output probabilities """
+        """ Returns top k classes (based on the output probabilities) """
         return [self.probs.sort(dim=1, descending=True)[1][0][i].item() for i in range(k)]
 
     def get_one_hot(self, class_label):
         """ Transforms class 'm' to corresponding one hot vector """
         n = self.logits.size(1)  # get number of classes
-        one_hot = F.one_hot(class_label,n)
+        one_hot = F.one_hot(class_label, n).double()
         return one_hot
 
     def backward(self,class_label):
@@ -59,39 +61,51 @@ class guidedBackProp:
         self.model.zero_grad()
         self.logits.backward(gradient=one_hot, retain_graph=True)  # dy/dx
 
-    def generateMap(self,image, k):
-        """ Work in Progress: (should print heatmap) """
+    def generateMapK(self,image, k=1):
+        """ Work in Progress: (should print heatmap). Returns gradient maps on the 'k' most likely classes """
         self.reset()
         self.forward(image)
         map = []
         mostLikelyClasses = self.getTopK(k)
-        print('most likely', mostLikelyClasses)
         for classes in mostLikelyClasses:
             class_label = torch.tensor(np.array([classes])).type(torch.int64)
             self.backward(class_label)
             map.append(self.image.grad)  # in guided backprop we want dy/dx so we need the grad of the image
+        print('gradient', map[0].size())
+        return map
+
+
+    def generateMapClass(self,image, classLabel = 242):  # 242 -> boxer in imagenet
+        """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
+        self.reset()
+        self.forward(image)
+        map = []
+        class_label = torch.tensor(np.array([classLabel])).type(torch.int64)
+        self.backward(class_label)
+        map.append(self.image.grad)  # in guided backprop we want dy/dx so we need the grad of the image
+        print('gradient', map[0].size())
         return map
 # test
 
-
 def test(k = 1):
-    model = getResNetModel(18)
+    model = getResNetModel(152)
     gbb = guidedBackProp(model)
-    full_path = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\Images\cat_dog.png"  # change path accordingly
-    imageOriginal = Image.open(full_path).convert('RGB')
-    image = imageOriginal.copy()
-    image = transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # mean, std of imagenet
-            ]
-        )(image)  #  apply some transformations
+    url = "cat_dog.png"
+    imageOriginal = getImagePIL(url)
+    image = processImage(imageOriginal)
     image = image.unsqueeze(0)  # add 'batch' dimension
-
-    map = gbb.generateMap(image, k)
+    gbb.forward(image)
+    best = gbb.getTopK(10)
+    dictionary = getImageNetClasses()
+    # print('best predictions', [dictionary[i] for i in best])
+    map = gbb.generateMapClass(image)
     for heatmap in map:
-        hm = TF.to_pil_image(heatmap.squeeze(0))
-        res = Image.blend(imageOriginal, hm, 0.5)
+        gradientNumpy = gradientToImage(heatmap)
+        hm = Image.fromarray(np.uint8(gradientNumpy))
+        # print('hm size',hm.size)
+        hm.show()
+        res = Image.blend(imageOriginal, hm, 0.6)
         res.show()
 test()
+
+

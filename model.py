@@ -7,8 +7,10 @@ def getResNetModel(number=18, pretrained= True):
         return models.resnet34(pretrained=pretrained)
     elif number == 50:
         return models.resnet50(pretrained=pretrained)
-    else:
+    elif number == 101:
         return models.resnet101(pretrained=pretrained)
+    else:
+        return models.resnet152(pretrained=pretrained)
 
 def getDenseNetModel(number=121, pretrained = True):
     if number == 121:
