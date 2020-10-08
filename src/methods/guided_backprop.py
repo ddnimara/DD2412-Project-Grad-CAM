@@ -7,6 +7,11 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 from os import path
+from model import *
+from utilities import *
+import matplotlib.pyplot as plt
+import copy
+
 class guidedBackProp:
 
     def __init__(self,model):
@@ -85,9 +90,11 @@ class guidedBackProp:
         map.append(self.image.grad)  # in guided backprop we want dy/dx so we need the grad of the image
         print('gradient', map[0].size())
         return map
-# test
 
-def test(k = 1, image_path="../../images/cat_dog.png"):
+
+
+def guidedBackPropTest(image_path, k = 1):
+    """ Performs guided backprop on cat_dog image for k most likely classes """
     model = getResNetModel(152)
     model.eval()
     gbb = guidedBackProp(model)
@@ -104,5 +111,4 @@ def test(k = 1, image_path="../../images/cat_dog.png"):
         plt.imshow(np.uint8(gradientNumpy))
         plt.title(imagenetClasses[topk[i]])
         plt.show()
-test(5)
 

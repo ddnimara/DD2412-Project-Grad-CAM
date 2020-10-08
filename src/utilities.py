@@ -13,7 +13,6 @@ def getImageNetClasses():
 
 def getImagePIL(image_path, verbose = False):
     image_path = abspath(image_path)
-    
     if verbose:
         print('Image path', image_path)
 
@@ -45,6 +44,18 @@ def gradientToImage(gradient, verbose = False):
         print('gradient values', gradientNumpy)
 
     return gradientNumpy
+
+def tensorToHeatMap(gradient, verbose = False):
+    gradientNumpy = gradient[0].detach().numpy().transpose(1, 2, 0)  #
+    print('numpy array', gradientNumpy.shape)
+    print('min', gradientNumpy.min())
+    print('max', gradientNumpy.max())
+    gradientNumpy = (gradientNumpy - gradientNumpy.min()) / gradientNumpy.max()
+    if verbose:
+        print('gradient size', gradientNumpy.shape)
+        print('gradient values', gradientNumpy)
+    return gradientNumpy
+
 
 def evaluate(url, model):
     model.eval()
