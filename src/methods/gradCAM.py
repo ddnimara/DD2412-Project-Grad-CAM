@@ -7,8 +7,6 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 from os import path
-from model import *
-from utilities import *
 import matplotlib.pyplot as plt
 import copy
 
@@ -23,7 +21,7 @@ class Hook:
             self.hook = module.register_backward_hook(self.hook_fn)
 
     def hook_fn(self, module, input, output):
-        self.input = input.detach()
+        self.input = input
         self.output = output
 
     def close(self):
@@ -95,13 +93,11 @@ class gradCAM:
             map.append([self.activationHooks, self.gradientHooks])  # in guided backprop we want dy/dx so we need the grad of the image
         return map
 
-    def generateMapClass(self, image, classLabel=242):  # 242 -> boxer in imagenet
+    def generateMapClass(self, classLabel=242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        self.forward(image)
-        map = []
         class_label = torch.tensor(np.array([classLabel])).type(torch.int64)
         self.backward(class_label)
-        map.append([self.activationHooks, self.gradientHooks])
+        map = [self.activationHooks, self.gradientHooks]
         return map
 
     def generateCam(self, hooks, layer, image, className, alpha = 0.1):
@@ -121,29 +117,33 @@ class gradCAM:
 
         # convert to numpy so we can plot it
         numpyCam = tensorToHeatMap(cam)
-
         # make everything between (0,1) to plot as image
         originalImage = np.array(image).astype(np.float64)/255
-
         # combine heatmap + original map
         final = alpha*originalImage + (1-alpha)*numpyCam
-        plt.imshow(final)
-        plt.title(className)
-        plt.show()
+        return final
 
-def gradCamTest(k = 1):
+def gradCamTest(path, k = 1):
+    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
     model = getResNetModel(152)
     model.eval()
     layerList=['layer4.2.conv3']
     gm = gradCAM(model,layerList)
-    url = "cat_dog.png"
-    imageOriginal = getImagePIL(url)
+    imageOriginal = getImagePIL(path)
     image = processImage(imageOriginal)
     image = image.unsqueeze(0)  # add 'batch' dimension
-    map = gm.generateMapK(image,k)
+    gm.forward(image)
     imagenetClasses = getImageNetClasses()
     topk = gm.getTopK(k)
-    for i in range(len(map)):
+    for i in range(len(topk)):
+        map = gm.generateMapClass(topk[i])
         for layers in layerList:
             className = imagenetClasses[topk[i]]
-            gm.generateCam(map[i],layers, imageOriginal,className)
+            heatmap = gm.generateCam(map,layers, imageOriginal,className)
+            file_name = imagenetClasses[topk[i]] + 'GradCAM'
+            picture_path = os.path.join(result_folder,file_name)
+            plt.imshow(heatmap)
+            plt.title(file_name)
+            plt.savefig(picture_path)
+
+

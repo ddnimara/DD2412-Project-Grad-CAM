@@ -3,12 +3,6 @@ import torch
 from torch.nn import functional as F
 from src.models import *
 from src.utilities import *
-from PIL import Image
-import torchvision.transforms.functional as TF
-import matplotlib.pyplot as plt
-from os import path
-from model import *
-from utilities import *
 import matplotlib.pyplot as plt
 import copy
 
@@ -61,13 +55,13 @@ class guidedBackProp:
         return one_hot
 
     def backward(self,class_label):
+
         one_hot = self.get_one_hot(class_label)
         self.model.zero_grad()
         self.logits.backward(gradient=one_hot, retain_graph=True)  # dy/dx
 
     def generateMapK(self,image, k=1):
         """ Work in Progress: (should print heatmap). Returns gradient maps on the 'k' most likely classes """
-        #self.reset()
         self.forward(image)
         map = []
         mostLikelyClasses = self.getTopK(k)
@@ -80,35 +74,38 @@ class guidedBackProp:
         return map
 
 
-    def generateMapClass(self,image, classLabel = 242):  # 242 -> boxer in imagenet
+    def generateMapClass(self, classLabel = 242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        #self.reset()
-        self.forward(image)
-        map = []
         class_label = torch.tensor(np.array([classLabel])).type(torch.int64)
         self.backward(class_label)
-        map.append(self.image.grad)  # in guided backprop we want dy/dx so we need the grad of the image
-        print('gradient', map[0].size())
+        map = self.image.grad.clone() # in guided backprop we want dy/dx so we need the grad of the image
+        self.image.grad.zero_()
         return map
 
 
 
 def guidedBackPropTest(image_path, k = 1):
     """ Performs guided backprop on cat_dog image for k most likely classes """
+    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
     model = getResNetModel(152)
     model.eval()
     gbb = guidedBackProp(model)
     imageOriginal = getImagePIL(image_path)
     image = processImage(imageOriginal)
+
     image = image.unsqueeze(0)  # add 'batch' dimension
-    map = gbb.generateMapK(image,k)
+    print('image dim', image.size())
+    gbb.forward(image)
     imagenetClasses = getImageNetClasses()
     topk = gbb.getTopK(k)
     print('top k', topk)
-    for i in range (len(map)):
-        heatmap = map[i]
-        gradientNumpy = gradientToImage(heatmap)
+    for i in range(len(topk)):
+        heatmap = gbb.generateMapClass(topk[i])
+        gradientNumpy = gradientToImage(heatmap, True)
+        file_name = imagenetClasses[topk[i]] + 'guidedBackprop'
+        picture_path = os.path.join(result_folder, file_name)
         plt.imshow(np.uint8(gradientNumpy))
         plt.title(imagenetClasses[topk[i]])
-        plt.show()
+        plt.savefig(picture_path)
+
 

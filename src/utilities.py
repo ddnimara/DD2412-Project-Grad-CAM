@@ -5,6 +5,10 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torch.nn import functional as F
 from os.path import abspath
+import matplotlib.pyplot as plt
+import numpy as np
+
+from sklearn.preprocessing import minmax_scale as minmax
 def getImageNetClasses():
     url = 'https://gist.githubusercontent.com/yrevar/6135f1bd8dcf2e0cc683/raw/d133d61a09d7e5a3b36b8c111a8dd5c4b5d560ee/' \
           'imagenet1000_clsid_to_human.pkl'
@@ -12,7 +16,13 @@ def getImageNetClasses():
     return classes
 
 def getImagePIL(image_path, verbose = False):
-    image_path = abspath(image_path)
+    # Get image location
+    image_folder_path = abspath(image_path)  # DD2412-Project-Grad-CAM/src/methods/image_path
+
+    image_folder_path = os.path.abspath(os.path.join(image_folder_path, os.pardir))  # DD2412-Project-Grad-CAM/src
+    image_folder_path = os.path.abspath(os.path.join(image_folder_path, os.pardir))  # DD2412-Project-Grad-CAM
+    image_folder_path = os.path.abspath(os.path.join(image_folder_path, 'images'))   # DD2412-Project-Grad-CAM/images
+    image_path = os.path.abspath(os.path.join(image_folder_path, image_path))        # DD2412-Project-Grad-CAM/images/image_path
     if verbose:
         print('Image path', image_path)
 
@@ -28,7 +38,6 @@ def processImage(image):
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # mean, std of imagenet
             ]
         )(image)  #  apply some transformations
-
     return image
 
 def gradientToImage(gradient, verbose = False):
@@ -37,29 +46,28 @@ def gradientToImage(gradient, verbose = False):
         the pixel values in [0,255]"""
 
     gradientNumpy = gradient[0].numpy().transpose(1, 2, 0)  #
-
-    gradientNumpy = 255.0 * (gradientNumpy - gradientNumpy.min())/gradientNumpy.max()
+    gradientNumpy = (gradientNumpy - gradientNumpy.min())
+    gradientNumpy = gradientNumpy/gradientNumpy.max()
+    #gradientNumpy*= 255.0
     if verbose:
         print('gradient size', gradientNumpy.shape)
         print('gradient values', gradientNumpy)
 
     return gradientNumpy
 
-def tensorToHeatMap(gradient, verbose = False):
-    gradientNumpy = gradient[0].detach().numpy().transpose(1, 2, 0)  #
-    print('numpy array', gradientNumpy.shape)
-    print('min', gradientNumpy.min())
-    print('max', gradientNumpy.max())
-    gradientNumpy = (gradientNumpy - gradientNumpy.min()) / gradientNumpy.max()
+def tensorToHeatMap(tensor, verbose = False):
+    gradientNumpy = tensor[0].detach().numpy().transpose(1, 2, 0)  #
+    gradientNumpy = (gradientNumpy - gradientNumpy.min())
+    gradientNumpy = gradientNumpy/gradientNumpy.max()
     if verbose:
         print('gradient size', gradientNumpy.shape)
         print('gradient values', gradientNumpy)
     return gradientNumpy
 
 
-def evaluate(url, model):
+def evaluate(path, model):
     model.eval()
-    imageOriginal = getImagePIL(url)
+    imageOriginal = getImagePIL(path)
     dictionary = getImageNetClasses()
     image = processImage(imageOriginal)
     image = image.unsqueeze(0)  # add 'batch' dimension
