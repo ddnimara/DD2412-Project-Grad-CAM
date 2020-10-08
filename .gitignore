@@ -1,5 +1,7 @@
 # Doumitrou's IDE
-.idea/**
+/.idea/*
+# Rajmund's virtualenv
+/adl-venv/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
