@@ -1,13 +1,12 @@
-
 import numpy as np
 import torch
 from torch.nn import functional as F
-from model import *
-from utilities import *
+from src.models import *
+from src.utilities import *
 from PIL import Image
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-
+from os import path
 class guidedBackProp:
 
     def __init__(self,model):
@@ -88,12 +87,11 @@ class guidedBackProp:
         return map
 # test
 
-def test(k = 1):
+def test(k = 1, image_path="../../images/cat_dog.png"):
     model = getResNetModel(152)
     model.eval()
     gbb = guidedBackProp(model)
-    url = "cat_dog.png"
-    imageOriginal = getImagePIL(url)
+    imageOriginal = getImagePIL(image_path)
     image = processImage(imageOriginal)
     image = image.unsqueeze(0)  # add 'batch' dimension
     map = gbb.generateMapK(image,k)

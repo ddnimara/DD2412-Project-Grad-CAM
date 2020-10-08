@@ -4,21 +4,20 @@ import sys, os
 from PIL import Image
 import torchvision.transforms as transforms
 from torch.nn import functional as F
-
+from os.path import abspath
 def getImageNetClasses():
     url = 'https://gist.githubusercontent.com/yrevar/6135f1bd8dcf2e0cc683/raw/d133d61a09d7e5a3b36b8c111a8dd5c4b5d560ee/' \
           'imagenet1000_clsid_to_human.pkl'
     classes = pickle.load(req.urlopen(url))
     return classes
 
-def getImagePIL(path, verbose = False):
-    pathname = os.path.dirname(sys.path[0])
-    imagepath = os.path.join(pathname,"Images",path)
-
+def getImagePIL(image_path, verbose = False):
+    image_path = abspath(image_path)
+    
     if verbose:
-        print('Image path', imagepath)
+        print('Image path', image_path)
 
-    image = Image.open(imagepath).convert('RGB')
+    image = Image.open(image_path).convert('RGB')
     return image
 
 def processImage(image):
@@ -46,6 +45,7 @@ def gradientToImage(gradient, verbose = False):
         print('gradient values', gradientNumpy)
 
     return gradientNumpy
+
 def evaluate(url, model):
     model.eval()
     imageOriginal = getImagePIL(url)
