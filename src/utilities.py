@@ -17,12 +17,8 @@ def getImageNetClasses():
 
 def getImagePIL(image_path, verbose = False):
     # Get image location
-    image_folder_path = abspath(image_path)  # DD2412-Project-Grad-CAM/src/methods/image_path
-
-    image_folder_path = os.path.abspath(os.path.join(image_folder_path, os.pardir))  # DD2412-Project-Grad-CAM/src
-    image_folder_path = os.path.abspath(os.path.join(image_folder_path, os.pardir))  # DD2412-Project-Grad-CAM
-    image_folder_path = os.path.abspath(os.path.join(image_folder_path, 'images'))   # DD2412-Project-Grad-CAM/images
-    image_path = os.path.abspath(os.path.join(image_folder_path, image_path))        # DD2412-Project-Grad-CAM/images/image_path
+    image_folder_path = abspath(image_path)
+    
     if verbose:
         print('Image path', image_path)
 
