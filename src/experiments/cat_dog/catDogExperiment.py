@@ -4,10 +4,10 @@ from src.methods.gradCAM import *
 from src.methods.guided_backprop import *
 from src.utilities import *
 import matplotlib.pyplot as plt
+from os import path
 
-def guidedBackPropTest(image_path, k = 1):
+def guidedBackPropTest(image_path, result_folder, k = 1):
     """ Performs guided backprop on cat_dog image for k most likely classes """
-    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
     model = getResNetModel(152)
     model.eval()
     gbb = guidedBackProp(model)
@@ -30,8 +30,7 @@ def guidedBackPropTest(image_path, k = 1):
         plt.savefig(picture_path)
 
 
-def gradCamTest(image_path, k = 1, layerList = ['layer4.2.conv3']):
-    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
+def gradCamTest(image_path, result_folder, k = 1, layerList = ['layer4.2.conv3']):
     model = getResNetModel(152)
     model.eval()
     gm = gradCAM(model,layerList)
@@ -52,8 +51,7 @@ def gradCamTest(image_path, k = 1, layerList = ['layer4.2.conv3']):
             plt.title(file_name)
             plt.savefig(picture_path)
 
-def guidedGradCamTest(image_path, k = 1, layerList = ['layer4.2.conv3']):
-    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
+def guidedGradCamTest(image_path, result_folder, k = 1, layerList = ['layer4.2.conv3']):
     model = getResNetModel(152)
     model.eval()
     gbp = guidedBackProp(model)
@@ -83,4 +81,8 @@ def guidedGradCamTest(image_path, k = 1, layerList = ['layer4.2.conv3']):
             plt.title(file_name)
             plt.savefig(picture_path)
             
-gradCamTest("cat_dog.png", k = 5)
+result_folder = path.abspath("../../../results/catdog2")
+image_path = path.abspath("../../../images/cat_dog.png")
+gradCamTest(image_path, result_folder, k = 5)
+guidedBackPropTest(image_path, result_folder, k=5)
+guidedGradCamTest(image_path, result_folder, k=5)
