@@ -81,7 +81,7 @@ def guidedGradCamTest(image_path, result_folder, k = 1, layerList = ['layer4.2.c
             plt.title(file_name)
             plt.savefig(picture_path)
             
-result_folder = path.abspath("../../../results/catdog2")
+result_folder = path.abspath("../../../results/catdog")
 image_path = path.abspath("../../../images/cat_dog.png")
 gradCamTest(image_path, result_folder, k = 5)
 guidedBackPropTest(image_path, result_folder, k=5)

@@ -1,0 +1,3 @@
+[submodule "src/experiments/sec-segmentation/SEC"]
+	path = src/experiments/sec-segmentation/SEC
+	url = https://github.com/nagyrajmund/SEC
