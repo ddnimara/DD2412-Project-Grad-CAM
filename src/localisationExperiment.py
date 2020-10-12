@@ -2,7 +2,7 @@ from src.models import *
 from src.methods.gradCAM import *
 from src.methods.guided_backprop import *
 from src.utilities import *
-from src.catDogExperiment import *
+from src.experiments.cat_dog.catDogExperiment import *
 from src.dataSetLoader import *
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -49,7 +49,7 @@ def compute_iou(predicted, truth):
     return iou
 
 def iouThreshold(iou, thresh = 0.5):
-    if iou >= 0.5:
+    if iou >= thresh:
         return 1
     else:
         return 0
@@ -158,7 +158,10 @@ def getAttributesFromXML(root):
     return sizes, names, bbox
 
 def generateDataframe(directoryPath):
-    """ Scans the directory for xmls (and images) and places useful info in dataframe (pandas) """
+    """ Scans the directory for xmls (and images) and places useful info in dataframe (pandas).
+        In order for this to work the images must be located in the directory path, while the xml files in
+        directoryPath/val info.
+    """
     pcl_file_name = os.path.join(directoryPath, "dataframe")
     if os.path.exists(pcl_file_name):  # if we've done this before, extract it via the pickle
         return pd.read_pickle(pcl_file_name)
