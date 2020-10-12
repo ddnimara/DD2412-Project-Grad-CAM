@@ -9,11 +9,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn.preprocessing import minmax_scale as minmax
+
 def getImageNetClasses():
     url = 'https://gist.githubusercontent.com/yrevar/6135f1bd8dcf2e0cc683/raw/d133d61a09d7e5a3b36b8c111a8dd5c4b5d560ee/' \
           'imagenet1000_clsid_to_human.pkl'
     classes = pickle.load(req.urlopen(url))
     return classes
+
+def rgb2gray(rgb):
+    return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 
 def getImagePIL(image_path, verbose = False):
     # Get image location
