@@ -82,30 +82,12 @@ class guidedBackProp:
         self.image.grad.zero_()
         return map
 
+    def generateMapClass(self, classLabels):  # 242 -> boxer in imagenet
+        """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
+        self.backward(classLabels)
+        map = self.image.grad.clone() # in guided backprop we want dy/dx so we need the grad of the image
+        self.image.grad.zero_()
+        return map
 
-
-def guidedBackPropTest(image_path, k = 1):
-    """ Performs guided backprop on cat_dog image for k most likely classes """
-    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
-    model = getResNetModel(152)
-    model.eval()
-    gbb = guidedBackProp(model)
-    imageOriginal = getImagePIL(image_path)
-    image = processImage(imageOriginal)
-
-    image = image.unsqueeze(0)  # add 'batch' dimension
-    print('image dim', image.size())
-    gbb.forward(image)
-    imagenetClasses = getImageNetClasses()
-    topk = gbb.getTopK(k)
-    print('top k', topk)
-    for i in range(len(topk)):
-        heatmap = gbb.generateMapClass(topk[i])
-        gradientNumpy = gradientToImage(heatmap, True)
-        file_name = imagenetClasses[topk[i]] + 'guidedBackprop'
-        picture_path = os.path.join(result_folder, file_name)
-        plt.imshow(np.uint8(gradientNumpy))
-        plt.title(imagenetClasses[topk[i]])
-        plt.savefig(picture_path)
 
 

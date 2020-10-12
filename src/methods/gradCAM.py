@@ -1,15 +1,7 @@
 import numpy as np
 import torch
-from torch.nn import functional as F
-from src.models import *
 from src.utilities import *
-from PIL import Image
-import torchvision.transforms.functional as TF
-import matplotlib.pyplot as plt
-from os import path
-import matplotlib.pyplot as plt
-import copy
-
+import cv2
 
 
 class Hook:
@@ -100,11 +92,20 @@ class gradCAM:
         map = [self.activationHooks, self.gradientHooks]
         return map
 
-    def generateCam(self, hooks, layer, image, className, alpha = 0.1):
+    def generateMapClassBatch(self, classLabels):  # 242 -> boxer in imagenet
+        """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
+        self.backward(classLabels)
+        map = [self.activationHooks, self.gradientHooks]
+        return map
+
+
+    def generateCam(self, hooks, layer, image_path, guided = False, counterFactual = False, isBatch = False):
         """ Generates CAMs. """
         # Get activation A_k and the gradients dy/dA_k
         activation = hooks[0][layer].output
         gradient = hooks[1][layer].output[0]
+        if counterFactual:
+            gradient = - gradient
         # compute a_k coefficient by performing a avg pool operation on the gradients
         a_k = F.adaptive_avg_pool2d(gradient,1)
 
@@ -115,35 +116,26 @@ class gradCAM:
         #interpolate to original image dimensions
         cam = F.interpolate(cam, self.image.shape[2:], mode = 'bilinear', align_corners=False)
 
-        # convert to numpy so we can plot it
-        numpyCam = tensorToHeatMap(cam)
-        # make everything between (0,1) to plot as image
-        originalImage = np.array(image).astype(np.float64)/255
-        # combine heatmap + original map
-        final = alpha*originalImage + (1-alpha)*numpyCam
-        return final
+        # convert to numpy so
+        # numpyCam = tensorToHeatMap(cam)
+        if isBatch:
+            numpyCam = tensorToHeatMapBatch(cam)
+        else:
+            numpyCam = tensorToHeatMap(cam)
+        if guided == False:  # Normal grad-cam wants to impose the heatmap over the image
+            # reformat it to represent an image. Also adjust it's colours (to be the same as in the paper)
+            heatmap = cv2.applyColorMap(np.uint8(255 * numpyCam), cv2.COLORMAP_JET)
 
-def gradCamTest(path, k = 1):
-    result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"
-    model = getResNetModel(152)
-    model.eval()
-    layerList=['layer4.2.conv3']
-    gm = gradCAM(model,layerList)
-    imageOriginal = getImagePIL(path)
-    image = processImage(imageOriginal)
-    image = image.unsqueeze(0)  # add 'batch' dimension
-    gm.forward(image)
-    imagenetClasses = getImageNetClasses()
-    topk = gm.getTopK(k)
-    for i in range(len(topk)):
-        map = gm.generateMapClass(topk[i])
-        for layers in layerList:
-            className = imagenetClasses[topk[i]]
-            heatmap = gm.generateCam(map,layers, imageOriginal,className)
-            file_name = imagenetClasses[topk[i]] + 'GradCAM'
-            picture_path = os.path.join(result_folder,file_name)
-            plt.imshow(heatmap)
-            plt.title(file_name)
-            plt.savefig(picture_path)
+            # get original image via path
+            originalImage = cv2.imread(image_path,1)
+
+            # combine them
+            finalImage = cv2.addWeighted(heatmap, 0.7, originalImage, 0.3, 0)
+
+            # make it rgb (cv2 by default is bgr for some reason)
+            finalImage = cv2.cvtColor(finalImage, cv2.COLOR_BGR2RGB)
+        else:  # guided gradcam simply wants the heatmap
+            finalImage = numpyCam
+        return finalImage
 
 
