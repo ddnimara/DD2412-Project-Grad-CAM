@@ -4,6 +4,7 @@ import sys, os
 from PIL import Image
 import torchvision.transforms as transforms
 from os.path import abspath
+
 def getImageNetClasses():
     """ Gets a dictionary {class_id: class_name}"""
     url = 'https://gist.githubusercontent.com/yrevar/6135f1bd8dcf2e0cc683/raw/d133d61a09d7e5a3b36b8c111a8dd5c4b5d560ee/' \
