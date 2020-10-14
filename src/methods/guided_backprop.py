@@ -82,7 +82,7 @@ class guidedBackProp:
         self.image.grad.zero_()
         return map
 
-    def generateMapClass(self, classLabels):  # 242 -> boxer in imagenet
+    def generateMapClassBatch(self, classLabels):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
         self.backward(classLabels)
         map = self.image.grad.clone() # in guided backprop we want dy/dx so we need the grad of the image

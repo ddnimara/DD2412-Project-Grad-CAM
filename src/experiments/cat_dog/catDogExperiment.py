@@ -27,7 +27,8 @@ def guidedBackPropTest(image_path, k = 1, model = getResNetModel(152)):
         picture_path = os.path.join(result_folder, file_name)
         plt.imshow(gradientNumpy)
         plt.title(file_name)
-        plt.savefig(picture_path)
+        plt.show()
+        #plt.savefig(picture_path)
 
 
 def gradCamTest(image_path, k = 1, model = getResNetModel(152), layerList = ['layer4'], counterFactual = False):
@@ -80,13 +81,14 @@ def guidedGradCamTest(image_path, k = 1, model = getResNetModel(152), layerList 
         gradientNumpy = gradientToImage(mapGuidedBackProp)
         for layers in layerList:
             className = imagenetClasses[topk[i]]
-            heatmap = gm.generateCam(mapCAM, layers, im_path, guided = True)
+            heatmap = gm.generateCam(mapCAM, layers, im_path, mergeWithImage = False)
             finalMap = heatmap * gradientNumpy
             file_name = className + 'GuidedGradCAM'
             picture_path = os.path.join(result_folder,file_name)
             plt.imshow(finalMap)
             plt.title(file_name)
-            plt.savefig(picture_path)
+            plt.show()
+            #plt.savefig(picture_path)
 
 def getModelDetails(model = getResNetModel(152)):
     """ Useful method to get layer information (which we use to access activations in gradcam) """
@@ -106,11 +108,11 @@ def runExperiment(layerList = ["features.29"], image_path = "cat_dog.png", model
 
 
 # result_folder = path.abspath("../../../results/catdog2")
-# image_path = path.abspath("../../../images/cat_dog.png")
+image_path = path.abspath("../../../images/cat_dog.png")
 # gradCamTest(image_path, result_folder, k = 5)
 # guidedBackPropTest(image_path, result_folder, k=5)
 # guidedGradCamTest(image_path, result_folder, k=5)
-# model = getAlexNet(pretrained=True)
+model = getVGGModel(pretrained=True)
 # getModelDetails(model)
 #path = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\images\cat_dog.png"
-#runExperiment(image_path = path, model = model, layerList=["inception5b"], k = 5)
+runExperiment(image_path = image_path, model = model, layerList=["features.29"], k = 1, experiment_name = "asd")

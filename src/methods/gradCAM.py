@@ -98,7 +98,7 @@ class gradCAM:
         map = [self.activationHooks, self.gradientHooks]
         return map
 
-    def generateCam(self, hooks, layer, image_path, guided = False, counterFactual = False, isBatch = False):
+    def generateCam(self, hooks, layer, image_path, mergeWithImage = True, counterFactual = False, isBatch = False, rescale = True):
         """ Generates CAMs. """
         # Get activation A_k and the gradients dy/dA_k
         activation = hooks[0][layer].output
@@ -118,10 +118,10 @@ class gradCAM:
         # convert to numpy so
         # numpyCam = tensorToHeatMap(cam)
         if isBatch:
-            numpyCam = tensorToHeatMapBatch(cam)
+            numpyCam = tensorToHeatMapBatch(cam, rescale= rescale)
         else:
-            numpyCam = tensorToHeatMap(cam)
-        if not guided:  # Normal grad-cam wants to impose the heatmap over the image
+            numpyCam = tensorToHeatMap(cam, rescale= rescale)
+        if mergeWithImage:  # Normal grad-cam wants to impose the heatmap over the image
             # reformat it to represent an image. Also adjust it's colours (to be the same as in the paper)
             heatmap = cv2.applyColorMap(np.uint8(255 * numpyCam), cv2.COLORMAP_JET)
 

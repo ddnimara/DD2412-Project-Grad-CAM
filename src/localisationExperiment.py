@@ -247,7 +247,7 @@ def testBatch(model, df, layer=['features.42'], k = 1):  #.42
 
             # generate the heatmaps
             map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
-            heatmap = gcm.generateCam(map, layer[0], image_path = None, guided = True, isBatch= True)
+            heatmap = gcm.generateCam(map, layer[0], image_path = None, mergeWithImage = False, isBatch= True)
 
             for i in range(heatmap.shape[0]):  # iterate over batch
                 truthLabels = df_view.iloc[i].loc["id"]
@@ -292,6 +292,8 @@ def reshapeImagenetImages():
 # df = generateDataframe(directoryPath)
 # print("Updating its image list")
 # image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
+# df_csv["path"] = pd.Series(image_list)
+# df_csv.to_csv("../datasets/res.csv")
 # df["path"] = pd.Series(image_list)
 # print("Starting Localisation experiment on VGG")
 # model = getVGGModel(batchNorm = True, pretrained=True)

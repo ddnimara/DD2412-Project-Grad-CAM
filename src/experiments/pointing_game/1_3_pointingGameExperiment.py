@@ -62,12 +62,11 @@ def get_hit_or_miss(model, df, layer, k = 1):
             batch_label = topk[:, classNumber]
             # generate the heatmaps
             map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
-            heatmap = gcm.generateCam(map, layer[0], image_path=None, guided=True, isBatch=True)
+            heatmap = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True, rescale=False)
 
             for i in range(heatmap.shape[0]):  # iterate over batch
                 max_ind = np.unravel_index(heatmap[i].argmax(), heatmap[i].shape)
                 max_acts[it + i, classNumber] = heatmap[i].max()
-                
                 truthLabels = json.loads(df_view.iloc[i].loc["id"])
                 truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
                 
@@ -98,6 +97,7 @@ def get_localization_accuracy(hits_and_misses):
 def get_localization_recall(hits_and_misses, good_predictions, max_acts, threshold=0.5):
     hits_and_misses_new = np.logical_or( \
         np.logical_and(hits_and_misses, max_acts >= threshold), \
+        #hits_and_misses,
         np.logical_and(np.logical_not(good_predictions), max_acts < threshold) \
         )
     hit = np.count_nonzero(hits_and_misses_new)
@@ -112,11 +112,11 @@ def pointing_game(model, layer, df, threshold=0.5):
 
 df = pd.read_csv("../../../datasets/res.csv")
 print("Running Pointing Game on VGG16...")
-accuracy, recall = pointing_game(getVGGModel(16), layer=['features'], df=df)
+accuracy, recall = pointing_game(getVGGModel(16), layer=['features.29'], df=df)  # features
 print("Accuracy: ", accuracy)
 print("Recall: ", recall)
 
-print("Running Pointing Game on GoogLeNet...")
-accuracy, recall = pointing_game(getGoogleModel(), layer=['inception5b.branch4.1.conv'], df=df)
-print("Accuracy: ", accuracy)
-print("Recall: ", recall)
+# print("Running Pointing Game on GoogLeNet...")
+# accuracy, recall = pointing_game(getGoogleModel(), layer=['inception5b'], df=df)  # inception5b.branch4.1.conv
+# print("Accuracy: ", accuracy)
+# print("Recall: ", recall)

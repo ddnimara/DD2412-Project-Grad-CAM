@@ -88,21 +88,23 @@ def gradientToImageBatch(gradient):
 
 
 
-def tensorToHeatMap(tensor, verbose = False):
+def tensorToHeatMap(tensor, rescale = True):
     """ Same with gradientToImage (no idea why). I will filter it in later commits. """
     gradientNumpy = tensor[0].detach().numpy().transpose(1, 2, 0)  #
-    gradientNumpy = (gradientNumpy - gradientNumpy.min())
-    gradientNumpy = gradientNumpy/gradientNumpy.max()
+    if rescale:
+        gradientNumpy = (gradientNumpy - gradientNumpy.min())
+        gradientNumpy = gradientNumpy/gradientNumpy.max()
 
     return gradientNumpy
 
 
-def tensorToHeatMapBatch(tensor):
+def tensorToHeatMapBatch(tensor, rescale = True):
     """ Same as above, but with batches """
     gradientNumpy = tensor.cpu().detach().numpy().transpose(0, 2, 3, 1)  #
-    for i in range(gradientNumpy.shape[0]):
-        gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
-        gradientNumpy[i] = gradientNumpy[i]/gradientNumpy[i].max()
+    if rescale:
+        for i in range(gradientNumpy.shape[0]):
+            gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
+            gradientNumpy[i] = gradientNumpy[i]/gradientNumpy[i].max()
 
 
     return gradientNumpy
