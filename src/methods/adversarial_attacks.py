@@ -48,6 +48,9 @@ class FastGradientSignMethod:
             print("Image is incorrectly classified, skipping adversarial attack...")
             return None
         
+        if verbose:
+            print("Probability of the true class according to the model, in each FGSM iteration:")
+            
         iters = 0
         while predicted_label == true_label and iters <= max_iters:
             iters += 1
