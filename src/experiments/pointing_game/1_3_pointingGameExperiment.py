@@ -9,7 +9,6 @@ import cv2
 import numpy as np
 import pandas as pd
 import torch
-import xml.etree.ElementTree as ET
 from tqdm import tqdm
 import json
 
