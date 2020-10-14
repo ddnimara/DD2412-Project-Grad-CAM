@@ -54,6 +54,7 @@ def getImagePIL(image_path, verbose = False):
 def processImage(image):
     """ Useful for processsing a single image. Once more, if you wish to process a batch, use the dataloader class instead."""
     image = image.copy()
+
     image = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -98,8 +99,10 @@ def tensorToHeatMap(tensor, verbose = False):
 def tensorToHeatMapBatch(tensor):
     """ Same as above, but with batches """
     gradientNumpy = tensor.cpu().detach().numpy().transpose(0, 2, 3, 1)  #
-    gradientNumpy = (gradientNumpy - gradientNumpy.min())
-    gradientNumpy = gradientNumpy/gradientNumpy.max()
+    for i in range(gradientNumpy.shape[0]):
+        gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
+        gradientNumpy[i] = gradientNumpy[i]/gradientNumpy[i].max()
+
 
     return gradientNumpy
 

@@ -21,15 +21,27 @@ def getDenseNetModel(number=121, pretrained = True):
         return models.densenet169(pretrained=pretrained)
 
 
-def getVGGModel(number=16, pretrained=True):
+def getVGGModel(number=16, pretrained=True, batchNorm=False):
     if number == 11:
-        return models.vgg11(pretrained=pretrained)
+        if batchNorm:
+            return models.vgg11_bn(pretrained=pretrained)
+        else:
+            return models.vgg11(pretrained=pretrained)
     elif number == 13:
-        return models.vgg13(pretrained=pretrained)
+        if batchNorm:
+            return models.vgg13_bn(pretrained=pretrained)
+        else:
+            return models.vgg13(pretrained=pretrained)
     elif number == 16:
-        return models.vgg16(pretrained=pretrained)
+        if batchNorm:
+            return models.vgg16_bn(pretrained=pretrained)
+        else:
+            return models.vgg16(pretrained=pretrained)
     else:
-        return models.vgg19(pretrained=pretrained)
+        if batchNorm:
+            return models.vgg19_bn(pretrained=pretrained)
+        else:
+            return models.vgg19(pretrained=pretrained)
 
 def getGoogleModel(pretrained=True):
     return models.googlenet(pretrained=pretrained)

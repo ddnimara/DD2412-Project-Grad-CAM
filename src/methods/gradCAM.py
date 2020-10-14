@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from src.utilities import *
 import cv2
-
+from torch.nn import functional as F
 
 class Hook:
     def __init__(self, module, backward=False):

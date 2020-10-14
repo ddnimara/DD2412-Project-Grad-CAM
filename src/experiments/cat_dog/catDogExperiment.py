@@ -53,11 +53,12 @@ def gradCamTest(image_path, k = 1, model = getResNetModel(152), layerList = ['la
             heatmap = gm.generateCam(map,layers, im_path, counterFactual= counterFactual)
             file_name = className + 'GradCAM'
             if counterFactual:
-                file_name+="CounterFactual"
+                file_name += "CounterFactual"
             picture_path = os.path.join(result_folder,file_name)
             plt.imshow(heatmap)
             plt.title(file_name)
-            plt.savefig(picture_path)
+            plt.show()
+            #plt.savefig(picture_path)
 
 def guidedGradCamTest(image_path, k = 1, model = getResNetModel(152), layerList = ['layer4']):
     result_folder = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\results\catdog"  # change it accordingly
@@ -90,10 +91,11 @@ def guidedGradCamTest(image_path, k = 1, model = getResNetModel(152), layerList 
 def getModelDetails(model = getResNetModel(152)):
     """ Useful method to get layer information (which we use to access activations in gradcam) """
     for name, layer in model.named_modules():  # module is of format [name, module]
-        print(name)
+        print("layer", layer)
+        print("name", name)
 
 
-def runExperiment(layerList = ["features"], image_path = "cat_dog.png", model = getVGGModel(16), k=1, counterFactual = False, experiment_name = "GradCam"):
+def runExperiment(layerList = ["features.29"], image_path = "cat_dog.png", model = getVGGModel(16), k=1, counterFactual = False, experiment_name = "GradCam"):
     """ Runs the experiments. By default it runs VGG16 with gradcam"""
     if experiment_name == "GuidedBp":
         guidedBackPropTest(model = model,image_path = image_path, k = k)
@@ -103,8 +105,12 @@ def runExperiment(layerList = ["features"], image_path = "cat_dog.png", model = 
         guidedGradCamTest(model = model,image_path = image_path, k = k, layerList = layerList)
 
 
-result_folder = path.abspath("../../../results/catdog2")
-image_path = path.abspath("../../../images/cat_dog.png")
-gradCamTest(image_path, result_folder, k = 5)
-guidedBackPropTest(image_path, result_folder, k=5)
-guidedGradCamTest(image_path, result_folder, k=5)
+# result_folder = path.abspath("../../../results/catdog2")
+# image_path = path.abspath("../../../images/cat_dog.png")
+# gradCamTest(image_path, result_folder, k = 5)
+# guidedBackPropTest(image_path, result_folder, k=5)
+# guidedGradCamTest(image_path, result_folder, k=5)
+# model = getAlexNet(pretrained=True)
+# getModelDetails(model)
+#path = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\images\cat_dog.png"
+#runExperiment(image_path = path, model = model, layerList=["inception5b"], k = 5)

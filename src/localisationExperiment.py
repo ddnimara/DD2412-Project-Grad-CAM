@@ -11,6 +11,7 @@ import glob
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
 from shapely.geometry import Polygon
+from torchvision import transforms
 
 def drawBoundingBoxes(image, label, predicted, truth):
     fig, ax = plt.subplots(1)
@@ -208,7 +209,7 @@ def generateDataframe(directoryPath):
         return df
 
 
-def testBatch(model, df, layer=['features'], k = 1):
+def testBatch(model, df, layer=['features.42'], k = 1):  #.42
     """ Computes IOU for a model using batches (work in progress)."""
 
     # Get device (so you can use gpu if possible)
@@ -218,8 +219,14 @@ def testBatch(model, df, layer=['features'], k = 1):
     df_count_size = df.shape[0]
 
     # create data loader
-    validationSet = dataSetILS(df, transforms)
-    batch_size = 10  # My gpu is running out of memory for more :(
+
+    transformations = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+    validationSet = dataSetILS(df, transformations)
+
+    batch_size = 10 # My gpu is running out of memory for more :(
     validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
 
     gcm = gradCAM(model, layer)
@@ -231,8 +238,6 @@ def testBatch(model, df, layer=['features'], k = 1):
         # df_view gives us access the dataframe on the batch window
         df_view = df.iloc[it:min(it + batch_size, df_count_size)]
         gcm.forward(batch_images)
-
-        imagenetClasses = getImageNetClasses()
 
         # get top k classes (indeces)
         topk = gcm.probs.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
@@ -255,19 +260,39 @@ def testBatch(model, df, layer=['features'], k = 1):
 
                     # used for debug:
                     # drawBoundingBoxes(batch_images[i], imagenetClasses[int(true_class)], bndbox, bndbox_true)
-                    iou_temp = iouThreshold(compute_iou(bndbox, bndbox_true))
-                    iou[it + i, classNumber] = max(iou[i, classNumber], iou_temp)
+                    w = bndbox_true[2] - bndbox_true[0]
+                    h = bndbox_true[3] - bndbox_true[1]
+                    threshold = min(0.5, 1.0*w*h/((w+10)*(h+10)))
+                    iou_temp = iouThreshold(compute_iou(bndbox, bndbox_true), thresh=threshold)
+                    iou[it + i, classNumber] = max(iou[it + i, classNumber], iou_temp)
         it += batch_size
-    success_total = iou.sum()/iou.shape[0]
+    perRowMax = iou.max(axis=1)
+    print("max", perRowMax.shape)
+    success_total = perRowMax.sum()/iou.shape[0]
     print("success percentage", success_total)
     print("error localisation", 1 - success_total)
 
-directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
-df = generateDataframe(directoryPath)
-pd.set_option('display.max_columns', None)
-print(df.head())
-testBatch(getVGGModel(16), df, k = 1)
-truth = [111, 108, 441, 193]
-predicted = [2, 69, 437, 207]
+def reshapeImagenetImages():
+    originalValPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
+    reshapedPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val\resized"
+    image_list = glob.glob(originalValPath + "\*.JPEG")
+    for i, image_path in enumerate(image_list):
+        if i % 1000 == 0:
+            print("i", i)
+        image = Image.open(image_path)
+        title = image_path.split("\\")[-1]
+        image_reshaped = transforms.Compose([transforms.Resize((224,224))])(image)
+        new_image_path = os.path.join(reshapedPath,title)
+        image_reshaped.save(new_image_path)
+        image.close()
 
-# print(iou(predicted, truth))
+
+# print("Picking Dataframe")
+# directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
+# df = generateDataframe(directoryPath)
+# print("Updating its image list")
+# image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
+# df["path"] = pd.Series(image_list)
+# print("Starting Localisation experiment on VGG")
+# model = getVGGModel(batchNorm = True, pretrained=True)
+# testBatch(model, df, k=5)
