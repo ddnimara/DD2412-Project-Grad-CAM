@@ -108,11 +108,11 @@ def runExperiment(layerList = ["features.29"], image_path = "cat_dog.png", model
 
 
 # result_folder = path.abspath("../../../results/catdog2")
-image_path = path.abspath("../../../images/cat_dog.png")
+# image_path = path.abspath("../../../images/cat_dog.png")
 # gradCamTest(image_path, result_folder, k = 5)
 # guidedBackPropTest(image_path, result_folder, k=5)
 # guidedGradCamTest(image_path, result_folder, k=5)
-model = getVGGModel(pretrained=True)
+# model = getVGGModel(pretrained=True)
 # getModelDetails(model)
 #path = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\images\cat_dog.png"
-runExperiment(image_path = image_path, model = model, layerList=["features.29"], k = 1, experiment_name = "asd")
+# runExperiment(image_path = image_path, model = model, layerList=["features.29"], k = 1, experiment_name = "asd")

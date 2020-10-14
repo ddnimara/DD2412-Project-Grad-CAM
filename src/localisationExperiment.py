@@ -209,7 +209,7 @@ def generateDataframe(directoryPath):
         return df
 
 
-def testBatch(model, df, layer=['features.42'], k = 1):  #.42
+def testBatchLocalisation(model, df, layer=['features.42'], k = 1):  #.42
     """ Computes IOU for a model using batches (work in progress)."""
 
     # Get device (so you can use gpu if possible)
@@ -272,6 +272,54 @@ def testBatch(model, df, layer=['features.42'], k = 1):  #.42
     print("success percentage", success_total)
     print("error localisation", 1 - success_total)
 
+def testBatchAccuracy(model, df, k = 1):  #.42
+    """ Computes IOU for a model using batches (work in progress)."""
+
+    # Get device (so you can use gpu if possible)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+    df_count_size = df.shape[0]
+
+    # create data loader
+
+    transformations = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+    validationSet = dataSetILS(df, transformations)
+
+    batch_size = 20 # My gpu is running out of memory for more :(
+    validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
+
+    it = 0  # we will use to keep track of the batch location
+    # Accuracy
+    predictions = np.zeros(df_count_size)
+    for batch_images in tqdm(validationLoader):
+        batch_images = batch_images.to(device)
+
+        # df_view gives us access the dataframe on the batch window
+        df_view = df.iloc[it:min(it + batch_size, df_count_size)]
+        output = model.forward(batch_images)
+        # get top k classes (indeces)
+        topk = output.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
+        for i in range(topk.shape[0]):
+            truthLabels = df_view.iloc[i].loc["id"]
+            # loop through top k classes
+            for classNumber in range(k):  # loop through likeliest predictions
+                batch_label = topk[i, classNumber]
+                if batch_label in truthLabels:
+                    predictions[it + i] = 1
+                    break
+
+
+
+        it += batch_size
+    print("shape", predictions.shape)
+    success_total = predictions.sum()/predictions.shape[0]
+    print("success percentage", success_total)
+    print("error localisation", 1 - success_total)
+
 def reshapeImagenetImages():
     originalValPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
     reshapedPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val\resized"
@@ -288,13 +336,13 @@ def reshapeImagenetImages():
 
 
 # print("Picking Dataframe")
-# directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
-# df = generateDataframe(directoryPath)
+directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
+df = generateDataframe(directoryPath)
 # print("Updating its image list")
-# image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
+image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
 # df_csv["path"] = pd.Series(image_list)
 # df_csv.to_csv("../datasets/res.csv")
-# df["path"] = pd.Series(image_list)
+df["path"] = pd.Series(image_list)
 # print("Starting Localisation experiment on VGG")
-# model = getVGGModel(batchNorm = True, pretrained=True)
-# testBatch(model, df, k=5)
+model = getGoogleModel()
+testBatchAccuracy(model, df, k=1)
