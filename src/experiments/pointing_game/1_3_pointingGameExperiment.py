@@ -13,12 +13,10 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 import json
 
-# Measuring the localization accuracy of Grad-CAM in the context of the Pointing Game on the VOC 2007 test and
-# the MS COCO val datasets, using VGG-16 and GoogLeNet
+# Measuring the localization accuracy of Grad-CAM in the context of the Pointing Game on 
+# the ILSVRC-12 val datasets, using VGG-16 and GoogLeNet
 
 def get_hit_or_miss(model, df, layer, k = 1):
-    """ Computes IOU for a model using batches (work in progress)."""
-
     # Get device (so you can use gpu if possible)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -45,16 +43,16 @@ def get_hit_or_miss(model, df, layer, k = 1):
     # Store max. activations
     max_acts = np.zeros((df_count_size, k))
 
-    # Loop trough batches
+    # Get ImageNet classes
+    imagenetClasses = getImageNetClasses()
+
+    # Loop through batches
     for batch_images in tqdm(validationLoader):
         batch_images = batch_images.to(device)
 
         # df_view gives us access the dataframe on the batch window
         df_view = df.iloc[it:min(it + batch_size, df_count_size)]
         gcm.forward(batch_images)
-
-        # Get ImageNet classes
-        imagenetClasses = getImageNetClasses()
 
         # get top k classes (indeces)
         topk = gcm.probs.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
@@ -67,7 +65,7 @@ def get_hit_or_miss(model, df, layer, k = 1):
             heatmap = gcm.generateCam(map, layer[0], image_path=None, guided=True, isBatch=True)
 
             for i in range(heatmap.shape[0]):  # iterate over batch
-                max_ind = np.argwhere(heatmap[i].max() == heatmap[i])
+                max_ind = np.unravel_index(heatmap[i].argmax(), heatmap[i].shape)
                 max_acts[it + i, classNumber] = heatmap[i].max()
                 
                 truthLabels = json.loads(df_view.iloc[i].loc["id"])
@@ -81,7 +79,7 @@ def get_hit_or_miss(model, df, layer, k = 1):
 
                     # Check whether the maximally activated point is within the relevant bounding box
                     x_min, y_min, x_max, y_max = bb
-                    x, y = max_ind[0][1], max_ind[0][0]
+                    x, y = max_ind[1], max_ind[0]
                     is_inside_box = (x >= x_min and x <= x_max and y >= y_min and y <= y_max)
                     hits_and_misses[it + i, classNumber] = max(hits_and_misses[it + i, classNumber], is_inside_box)
                     good_predictions[it + i, classNumber] = 1
