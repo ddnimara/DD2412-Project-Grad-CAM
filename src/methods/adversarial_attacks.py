@@ -50,7 +50,9 @@ class FastGradientSignMethod:
         
         if verbose:
             print("Probability of the true class according to the model, in each FGSM iteration:")
-            
+        
+        original_prediction_prob = F.softmax(output[0], dim=0)[predicted_label]
+
         iters = 0
         while predicted_label == true_label and iters <= max_iters:
             iters += 1
@@ -71,7 +73,6 @@ class FastGradientSignMethod:
             # 3. Feed the perturbed image to the network
             # Here we reattach the image tensor to the computational graph
             output = self.model.forward(image.requires_grad_())
-            old_prediction = predicted_label
             predicted_label = int(torch.argmax(output[0]))
             
             # We can print the probability of the true class to keep track of the progress
@@ -81,19 +82,38 @@ class FastGradientSignMethod:
        
         # 4. Visualize results
         if visualize:
-            self.visualize(original_image, noise, image, old_prediction, predicted_label)
+            predicted_label_prob = F.softmax(output[0], dim=0)[predicted_label]
+            self.visualize(original_image, noise, image, 
+                           original_prediction = true_label, 
+                           original_prediction_prob = original_prediction_prob, 
+                           final_prediction = predicted_label,
+                           final_prediction_prob = predicted_label_prob)
         
         return image
     
-    def visualize(self, image, noise, perturbed_image, old_prediction, new_prediction):
-        fig, (ax_1, ax_2, ax_3) = plt.subplots(1,3)
+    def visualize(self, image, noise, perturbed_image, 
+                  original_prediction, original_prediction_prob,
+                  final_prediction, final_prediction_prob):
+
+        fig, axes = plt.subplots(1,3)
+        for axis in axes:
+            axis.axis("off")
+            
+        # 1. Original image
+        title = "{} ({:.2f})".format(self.imagenet_classes[original_prediction],
+                                     original_prediction_prob)
+        axes[0].set_title(title)
+        axes[0].imshow(image.squeeze().detach().numpy().transpose(1,2,0))
         
-        ax_1.imshow(image.squeeze().detach().numpy().transpose(1,2,0))
-        ax_1.set_title(self.imagenet_classes[old_prediction])
+        # 2. Noise
         # Transform the noise from [-1,1] to [0,1]
-        ax_2.imshow((noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0))
+        axes[1].set_title("Adversarial noise")
+        axes[1].imshow((noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0))
         
-        ax_3.imshow(perturbed_image.squeeze().detach().numpy().transpose(1,2,0))
-        ax_3.set_title(self.imagenet_classes[new_prediction])
-        
+        # 3. Perturbed image 
+        title = "{} ({:.2f})".format(self.imagenet_classes[final_prediction],
+                                     final_prediction_prob)
+        axes[2].set_title(title)
+        axes[2].imshow(perturbed_image.squeeze().detach().numpy().transpose(1,2,0))
+        plt.tight_layout()
         plt.show()
