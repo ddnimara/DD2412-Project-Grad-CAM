@@ -46,7 +46,7 @@ def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=Fals
         if guided_gradcam:
            gbp.forward(batch_images)
 
-        batch_prob, batch_label = gcm.probs.topk(1, dim = 1)
+        batch_prob, batch_label = gcm.getTopK(k=1)
         batch_prob = batch_prob[:, 0]
         batch_label = batch_label[:, 0]
     

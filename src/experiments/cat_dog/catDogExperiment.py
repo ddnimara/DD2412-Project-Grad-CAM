@@ -16,12 +16,14 @@ def guidedBackPropTest(image_path, k = 1, model = getResNetModel(152)):
     image = image.unsqueeze(0)  # add 'batch' dimension
     gbb.forward(image)
     imagenetClasses = getImageNetClasses()
-    topk = gbb.getTopK(k)
+    _, topk = gbb.getTopK(k)
+    topk = topk[0]
 
     # loop through top k classes
     for i in range(len(topk)):
-        className = imagenetClasses[topk[i]]
-        heatmap = gbb.generateMapClass(topk[i])
+        cl = int(topk[i])
+        className = imagenetClasses[cl]
+        heatmap = gbb.generateMapClass(cl)
         gradientNumpy = gradientToImage(heatmap)
         file_name = className + 'guidedBackprop'
         picture_path = os.path.join(result_folder, file_name)
@@ -45,13 +47,16 @@ def gradCamTest(image_path, k = 1, model = getResNetModel(152), layerList = ['la
     image = image.unsqueeze(0)  # add 'batch' dimension
     gm.forward(image)
     imagenetClasses = getImageNetClasses()
-    topk = gm.getTopK(k)
+    _, topk = gm.getTopK(k)
+    topk = topk[0]
+    
     # loop through top k classes
     for i in range(len(topk)):
-        map = gm.generateMapClass(topk[i])
+        cl = int(topk[i])
+        map = gm.generateMapClass(cl)
         for layers in layerList:
-            className = imagenetClasses[topk[i]]
-            heatmap = gm.generateCam(map,layers, im_path, counterFactual= counterFactual)
+            className = imagenetClasses[cl]
+            heatmap = gm.generateCam(map, layers, im_path, counterFactual= counterFactual)
             file_name = className + 'GradCAM'
             if counterFactual:
                 file_name += "CounterFactual"
@@ -72,15 +77,17 @@ def guidedGradCamTest(image_path, k = 1, model = getResNetModel(152), layerList 
     gbp.forward(image)
     gm.forward(image)
     imagenetClasses = getImageNetClasses()
-    topk = gbp.getTopK(k)
+    _, topk = gbp.getTopK(k)
+    topk = topk[0]
 
     # loop through top k classes
     for i in range(len(topk)):
-        mapCAM = gm.generateMapClass(topk[i])
-        mapGuidedBackProp = gbp.generateMapClass(topk[i])
+        cl = int(topk[i])
+        mapCAM = gm.generateMapClass(cl)
+        mapGuidedBackProp = gbp.generateMapClass(cl)
         gradientNumpy = gradientToImage(mapGuidedBackProp)
         for layers in layerList:
-            className = imagenetClasses[topk[i]]
+            className = imagenetClasses[cl]
             heatmap = gm.generateCam(mapCAM, layers, im_path, mergeWithImage = False)
             finalMap = heatmap * gradientNumpy
             file_name = className + 'GuidedGradCAM'
@@ -108,11 +115,11 @@ def runExperiment(layerList = ["features.29"], image_path = "cat_dog.png", model
 
 
 # result_folder = path.abspath("../../../results/catdog2")
-image_path = path.abspath("../../../images/cat_dog.png")
+# image_path = path.abspath("../../../images/cat_dog.png")
 # gradCamTest(image_path, result_folder, k = 5)
 # guidedBackPropTest(image_path, result_folder, k=5)
 # guidedGradCamTest(image_path, result_folder, k=5)
-model = getVGGModel(pretrained=True)
+# model = getVGGModel(pretrained=True)
 # getModelDetails(model)
 #path = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\images\cat_dog.png"
-runExperiment(image_path = image_path, model = model, layerList=["features.29"], k = 1, experiment_name = "asd")
+# runExperiment(image_path = image_path, model = model, layerList=["features.29"], k = 2, experiment_name = "GradCAM")
