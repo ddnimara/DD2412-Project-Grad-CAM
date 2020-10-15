@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-import json
 from scipy.stats import spearmanr
 
 # Evaluating faithfulness via image occlusion by calculating the rank correlation of patches that change the CNN

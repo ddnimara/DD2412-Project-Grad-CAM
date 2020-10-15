@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-import json
+from ast import literal_eval
 
 # Measuring the localization accuracy of Grad-CAM in the context of the Pointing Game on 
 # the ILSVRC-12 val datasets, using VGG-16 and GoogLeNet
@@ -66,8 +66,8 @@ def get_hit_or_miss(model, df, layer, k = 1):
             for i in range(heatmap.shape[0]):  # iterate over batch
                 max_ind = np.unravel_index(heatmap[i].argmax(), heatmap[i].shape)
                 max_acts[it + i, classNumber] = heatmap[i].max()
-                truthLabels = json.loads(df_view.iloc[i].loc["id"])
-                truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
+                truthLabels = literal_eval(df_view.iloc[i].loc["id"])
+                truthBoxes = literal_eval(df_view.iloc[i].loc["bounding box"])
                 
                 for index, true_class in enumerate(truthLabels):  # loop through the true labels
                     if int(true_class) != int(batch_label[i]):  # find matching object
