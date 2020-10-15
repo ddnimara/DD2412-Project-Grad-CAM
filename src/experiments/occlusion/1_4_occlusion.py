@@ -18,7 +18,6 @@ from scipy.stats import spearmanr
 # dataset. Rank correlation should be averaged over 2510 images.
 
 def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=False):
-    # TODO guided Grad-CAM
     # Get device (so you can use gpu if possible)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -27,48 +26,70 @@ def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=Fals
 
     # Create data loader
     validationSet = dataSetILS(df, transforms)
-    batch_size = 16
+    batch_size = 2
     validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
 
     # Run Grad-CAM
     gcm = gradCAM(model, layer)
+    if guided_gradcam:
+        gbp = guidedBackProp(model)
     
     it = 0  # we will use to keep track of the batch location
     scores = []
 
-    # Loop trough batches
+    # Loop through batches
     for batch_images in tqdm(validationLoader):
         batch_images = batch_images.to(device)
 
         # df_view gives us access the dataframe on the batch window
         df_view = df.iloc[it:min(it + batch_size, df_count_size)]
         gcm.forward(batch_images)
-
-        # Get ImageNet classes
-        imagenetClasses = getImageNetClasses()
+        if guided_gradcam:
+           gbp.forward(batch_images)
 
         batch_prob, batch_label = gcm.probs.topk(1, dim = 1)
         batch_prob = batch_prob[:, 0]
         batch_label = batch_label[:, 0]
     
         # generate the heatmaps
-        map = gcm.generateMapClassBatch(batch_label)
-        heatmap = gcm.generateCam(map, layer[0], image_path=None, guided=True, isBatch=True)
+        mapCam = gcm.generateMapClassBatch(batch_label)
+        heatmap = gcm.generateCam(mapCam, layer[0], image_path=None, mergeWithImage=False, isBatch=True)
+        if guided_gradcam:
+            mapGuidedBackProp = gbp.generateMapClassBatch(batch_label)
+            gradientNumpy = gradientToImage(mapGuidedBackProp)
+            heatmap = heatmap * gradientNumpy
+                
+        plt.imshow(heatmap[0, :, :, 0])
+        plt.show()
+        plt.imshow(heatmap[1, :, :, 0])
+        plt.show()
+        exit()
 
         for i in range(heatmap.shape[0]):  # iterate over batch
-            # generate the occlusion maps
-            occlusion_map = occlusion(model, batch_images[i], batch_label[i], batch_prob[i], plot=plot)
+            # Normalize heatmap
+            hm = heatmap[i, :, :, 0]
+            max_value = hm.max()
+            hm = hm / max_value
             
-            # Rank correlation between heatmap and occlusion map
-            coeff, p = spearmanr(heatmap[i][0], occlusion_map)
+            # Generate the occlusion maps
+            occlusion_map = occlusion(model, batch_images[i], batch_label[i], \
+               batch_prob[i], plot=plot, invert=True)
+            
+            # Normalize the occlusion map
+            max_value = occlusion_map.max()
+            occlusion_map = occlusion_map / max_value
+            
+            # Calculate rank correlation between heatmap and occlusion map
+            coeff, p = spearmanr(hm, occlusion_map)
             scores.append(coeff)
-
+            # TODO fix score
+            
         it += batch_size
         
     # Return a list of hits and misses + max activations
     return np.array(scores)
     
-def occlusion(model, image, label, prob, plot=False):
+def occlusion(model, image, label, prob, plot=False, invert=True):
     prob = prob.detach().numpy()
     label = label.detach().numpy()
     original_image = image.clone()
@@ -100,11 +121,14 @@ def occlusion(model, image, label, prob, plot=False):
         plt.colorbar()
         plt.show()
         
+    if invert:
+        occlusion_map = 1 - occlusion_map
+        
     return occlusion_map
 
 df = pd.read_csv("../../../datasets/res.csv")
 print("Running Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
-scores = calculate_rank_correlation(getVGGModel(16), layer=['features'], df=df, guided_gradcam=False, plot=False)
+scores = calculate_rank_correlation(getVGGModel(16), layer=['features'], df=df, guided_gradcam=True, plot=False)
 print("Average score: ", np.average(scores))
 
 print("Running Guided Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
