@@ -88,6 +88,3 @@ class guidedBackProp:
         map = self.image.grad.clone() # in guided backprop we want dy/dx so we need the grad of the image
         self.image.grad.zero_()
         return map
-
-
-

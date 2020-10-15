@@ -26,7 +26,7 @@ def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=Fals
 
     # Create data loader
     validationSet = dataSetILS(df, transforms)
-    batch_size = 2
+    batch_size = 16
     validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
 
     # Run Grad-CAM
@@ -56,14 +56,8 @@ def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=Fals
         heatmap = gcm.generateCam(mapCam, layer[0], image_path=None, mergeWithImage=False, isBatch=True)
         if guided_gradcam:
             mapGuidedBackProp = gbp.generateMapClassBatch(batch_label)
-            gradientNumpy = gradientToImage(mapGuidedBackProp)
+            gradientNumpy = gradientToImageBatch(mapGuidedBackProp)
             heatmap = heatmap * gradientNumpy
-                
-        plt.imshow(heatmap[0, :, :, 0])
-        plt.show()
-        plt.imshow(heatmap[1, :, :, 0])
-        plt.show()
-        exit()
 
         for i in range(heatmap.shape[0]):  # iterate over batch
             # Normalize heatmap
@@ -80,14 +74,18 @@ def calculate_rank_correlation(model, df, layer, guided_gradcam=False, plot=Fals
             occlusion_map = occlusion_map / max_value
             
             # Calculate rank correlation between heatmap and occlusion map
-            coeff, p = spearmanr(hm, occlusion_map)
+            hm_rank = get_rank(hm)
+            occlusion_map_rank = get_rank(occlusion_map)
+            coeff, p = spearmanr(hm_rank, occlusion_map_rank)
             scores.append(coeff)
-            # TODO fix score
             
         it += batch_size
         
     # Return a list of hits and misses + max activations
     return np.array(scores)
+
+def get_rank(map):
+    return np.argsort(map.flatten())
     
 def occlusion(model, image, label, prob, plot=False, invert=True):
     prob = prob.detach().numpy()
@@ -115,20 +113,20 @@ def occlusion(model, image, label, prob, plot=False, invert=True):
             
             # Fill occlusion map
             occlusion_map[i:(i + block_h), j:(j + block_w)] = batch_prob
+        
+    if invert:
+        occlusion_map = 1 - occlusion_map
             
     if plot:
         plt.imshow(occlusion_map, cmap=plt.cm.seismic, vmin=0, vmax=1)
         plt.colorbar()
         plt.show()
         
-    if invert:
-        occlusion_map = 1 - occlusion_map
-        
     return occlusion_map
 
-df = pd.read_csv("../../../datasets/res.csv")
+df = pd.read_csv("../../../datasets/res_2510.csv")
 print("Running Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
-scores = calculate_rank_correlation(getVGGModel(16), layer=['features'], df=df, guided_gradcam=True, plot=False)
+scores = calculate_rank_correlation(getVGGModel(16), layer=['features'], df=df, guided_gradcam=False, plot=False)
 print("Average score: ", np.average(scores))
 
 print("Running Guided Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
