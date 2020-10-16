@@ -1,119 +1,92 @@
+from src.utilities import getImageNetClasses
+from src.methods.new_grad_cam import gradCAM
+
 import torch
 from torch.functional import F
+
 import matplotlib.pyplot as plt
-from src.utilities import getImageNetClasses
+
+def get_label(label_batch):
+    return int(torch.argmax(label_batch[0]))
+
+def get_confidence(output, label):
+    return F.softmax(output, dim=1)[0,label]
 
 class FastGradientSignMethod:
-    def __init__(self, model):
+    def __init__(self, model):                
         self.model = model
         self.model.eval()
         # Detach all the model parameters since we won't train the network
         for p in self.model.parameters():
             p.requires_grad = False
-        
-        self.imagenet_classes = getImageNetClasses()
-        
-    def generate_attack(self, image, target, epsilon = 0.03, max_iters = 20, 
-                        visualize = True, verbose = True):
-        """
-        Attempt to create a perturbed version of the given image using the 
-        Fast Gradient Sign Method in order to confuse the network. 
-        
-        Args:
-            image:      [1 x C x H x W] image
-            target:     [1 x N_class] ground truth label
-            epsilon:    float multiplier of the noise, controlling its severity
-            max_iters:  maximum number of FGSM iterations
-            visualize:  if True, plot the original image, the noise and the 
-                        perturbed image at the end
-        
-        Returns:  
-            the perturbed image (if the attack was succesful),
-            None                (otherwise)    
-        """
-        original_image = image
-        
+
+        self.imagenet_classes = getImageNetClasses()   
+
+    def generate_attack(self, unnormalized_image, normalized_image, 
+                        target, epsilon = 0.07):     
         if (target[0] != 0).sum() > 1:
             print("ERROR: Adversarial attacks are not yet implemented for multi-labeled examples!")
             return None
-
-        # We will need the gradients of the image
-        image.requires_grad_()
-        output = self.model.forward(image)
+                
+        normalized_image.requires_grad_()        
+        output = self.model.forward(normalized_image)
         
-        true_label = int(torch.argmax(target[0]))
-        predicted_label = int(torch.argmax(output[0]))
+        true_label = get_label(target)
+        predicted_label = get_label(output)
         
         if predicted_label != true_label:
             print("Image is incorrectly classified, skipping adversarial attack...")
-            return None
+            return None, None, None
         
-        if verbose:
-            print("Probability of the true class according to the model, in each FGSM iteration:")
-        
-        original_prediction_prob = F.softmax(output[0], dim=0)[predicted_label]
+        original_confidence = get_confidence(output, true_label)
 
-        iters = 0
-        while predicted_label == true_label and iters <= max_iters:
-            iters += 1
-            # 1. Calculate gradients from the previous forward pass
-            self.model.zero_grad()
-            loss = F.binary_cross_entropy_with_logits(output, target)
-            loss.backward()
-            image_gradients = image.grad.data
-                        
-            # 2. Perturb the image with an adversarial noise
-            
-            # We have to detach the image, otherwise the following + operation in image+noise
-            # would be tracked by the autograd (which disables gradient computations)
-            image = image.detach()
-            noise = epsilon * torch.sign(image_gradients)
-            image = image + noise
-            
-            # 3. Feed the perturbed image to the network
-            # Here we reattach the image tensor to the computational graph
-            output = self.model.forward(image.requires_grad_())
-            predicted_label = int(torch.argmax(output[0]))
-            
-            # We can print the probability of the true class to keep track of the progress
-            if verbose:
-                true_label_prob = F.softmax(output[0], dim=0)[true_label]
-                print("{0:.0%}".format(true_label_prob), end=" ", flush=True)
-       
-        # 4. Visualize results
-        if visualize:
-            predicted_label_prob = F.softmax(output[0], dim=0)[predicted_label]
-            self.visualize(original_image, noise, image, 
-                           original_prediction = true_label, 
-                           original_prediction_prob = original_prediction_prob, 
-                           final_prediction = predicted_label,
-                           final_prediction_prob = predicted_label_prob)
+        self.model.zero_grad()
+        loss = F.binary_cross_entropy_with_logits(output, target)
+        loss.backward()
+        image_gradients = normalized_image.grad.data
         
-        return image
+        noise = torch.sign(image_gradients)
+        perturbed_image = normalized_image + epsilon * noise
+        
+        output = self.model.forward(perturbed_image)
+        new_prediction = get_label(output)
+        new_confidence = get_confidence(output, new_prediction)
+        
+        if new_prediction == true_label:
+            print("Attack failed.")
+            return None, None, None
+        
+        print("Succesful attack!")
+        axes = self.visualize(unnormalized_image, noise, epsilon,
+                             true_label, original_confidence,
+                             new_prediction, new_confidence)
+            
+        return perturbed_image, new_prediction, axes
     
-    def visualize(self, image, noise, perturbed_image, 
-                  original_prediction, original_prediction_prob,
-                  final_prediction, final_prediction_prob):
+    def visualize(self, unnormalized_image, noise, epsilon,
+                  original_prediction, original_confidence,
+                  new_prediction, new_confidence):
 
-        fig, axes = plt.subplots(1,3)
-        for axis in axes:
+        fig, axes = plt.subplots(2,3)
+        for axis in axes.flatten():
             axis.axis("off")
             
         # 1. Original image
         title = "{} ({:.2f})".format(self.imagenet_classes[original_prediction],
-                                     original_prediction_prob)
-        axes[0].set_title(title)
-        axes[0].imshow(image.squeeze().detach().numpy().transpose(1,2,0))
+                                     original_confidence)
+        axes[0, 0].set_title(title)
+        axes[0, 0].imshow(unnormalized_image.squeeze().detach().numpy().transpose(1,2,0))
         
         # 2. Noise
+        axes[0, 1].set_title("Adversarial noise")
         # Transform the noise from [-1,1] to [0,1]
-        axes[1].set_title("Adversarial noise")
-        axes[1].imshow((noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0))
+        axes[0, 1].imshow((noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0))
         
         # 3. Perturbed image 
-        title = "{} ({:.2f})".format(self.imagenet_classes[final_prediction],
-                                     final_prediction_prob)
-        axes[2].set_title(title)
-        axes[2].imshow(perturbed_image.squeeze().detach().numpy().transpose(1,2,0))
-        plt.tight_layout()
-        plt.show()
+        title = "{} ({:.2f})".format(self.imagenet_classes[new_prediction],
+                                     new_confidence)
+        axes[0, 2].set_title(title)
+        perturbed_image = unnormalized_image + epsilon * noise
+        axes[0, 2].imshow(torch.clamp(perturbed_image, 0, 1).squeeze().detach().numpy().transpose(1,2,0))
+        
+        return axes

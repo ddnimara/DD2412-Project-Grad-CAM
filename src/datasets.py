@@ -7,14 +7,17 @@ from PIL import Image
 from ast import literal_eval
 
 class ResizedImagenetDataset(Dataset):
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, normalize=True):
         self.df = pd.read_csv(csv_path)
-        self.transforms = self._default_transforms()
-    
+        
+        if normalize:
+            self.transforms = self._default_transforms()
+        else:
+            self.transforms = torchvision.transforms.ToTensor()
+            
     def __getitem__(self, index):       
         image_path = self.df['path'][index]        
-        image = self.transforms( 
-                    Image.open(image_path).convert('RGB'))
+        image = self.transforms(Image.open(image_path).convert('RGB'))
         # Add batch dimension
         image = image.unsqueeze(0)
         
@@ -46,4 +49,3 @@ class ResizedImagenetDataset(Dataset):
             torchvision.transforms.Normalize(mean, std)])
         
         return default_transform
-            
