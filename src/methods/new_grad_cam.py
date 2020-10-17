@@ -91,7 +91,7 @@ class gradCAM:
         image = torch.clamp(image, 0,1)
         heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).numpy().transpose(1,2,0)), 0.3, heatmap, 0.7, 0)
+        combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).cpu().numpy().transpose(1,2,0)), 0.3, heatmap, 0.7, 0)
         
         if axis is not None:
             axis.imshow(combined_image)
