@@ -45,7 +45,6 @@ class gradCAM:
         self.remove_hooks()
         self.model.zero_grad()
         self.logits = None
-        self.image = None
         self.init_hooks()
     
     def remove_hooks(self):
@@ -53,16 +52,14 @@ class gradCAM:
         self.gradient_hook.close()
 
     def generate_heatmap(self, image, class_label, is_counterfactual=False):
-        self.reset()
-        if isinstance(class_label, int):
-            class_label = torch.Tensor([class_label]).type(torch.int64)
-            
-        self.logits = self.model.forward(image)
+        
 
-        # TODO (RN): what if class_label is not one-hot? 
-        #       check if it can happen (i.e. if any images have different classes present)
+    def generate_heatmaps(self, image_batch, class_label_batch, is_counterfactual=False):
+        self.reset()
+        self.logits = self.model.forward(image_batch)
+
         self.model.zero_grad()
-        self.logits.backward(gradient = self.get_one_hot(class_label),
+        self.logits.backward(gradient = self.get_one_hot(class_label_batch),
                              retain_graph = True)
         
         activations = self.activation_hook.output
@@ -73,21 +70,20 @@ class gradCAM:
         
         weights = F.adaptive_avg_pool2d(gradients, 1)
         
-        heatmap = F.relu((activations * weights).sum(dim = 1, keepdim = True))
-        # Upscale the heatmap to match image size
-        heatmap = F.interpolate(heatmap, image.shape[2:], mode='bilinear', align_corners = False)
-        heatmap_array = heatmap.squeeze(dim=0).cpu().detach().numpy().transpose(1, 2, 0)
-        
-        return heatmap_array
+        heatmaps = F.relu((activations * weights).sum(dim = 1, keepdim = True))
+        # Upscale the heatmaps to match image size
+        heatmaps = F.interpolate(heatmaps, image_batch.shape[2:], mode='bilinear', align_corners = False)
+        heatmaps = heatmaps.cpu().detach().numpy().transpose(0,2,3,1)
+        return heatmaps
     
-    def get_one_hot(self, class_label):
+    def get_one_hot(self, class_label_batch):
         """ Transforms class 'm' to corresponding one hot vector """
         n = self.logits.size(1)  # get number of classes
-        one_hot = F.one_hot(class_label, n).double()
+        one_hot = F.one_hot(class_label_batch, n).float()
         return one_hot
     
     @staticmethod
-    def plot_heatmap(image, heatmap, axis):
+    def plot_heatmap(image, heatmap, axis=None):
         # reformat it to represent an image. 
         # also adjust it's colours (to be the same as in the paper)
         heatmap = heatmap - heatmap.min()
@@ -97,4 +93,7 @@ class gradCAM:
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
         combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).numpy().transpose(1,2,0)), 0.3, heatmap, 0.7, 0)
         
-        axis.imshow(combined_image)
+        if axis is not None:
+            axis.imshow(combined_image)
+        else:
+            plt.imshow(combined_image)

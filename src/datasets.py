@@ -16,10 +16,8 @@ class ResizedImagenetDataset(Dataset):
             self.transforms = torchvision.transforms.ToTensor()
             
     def __getitem__(self, index):       
-        image_path = self.df['path'][index]        
+        image_path = self.df['path'][index]  
         image = self.transforms(Image.open(image_path).convert('RGB'))
-        # Add batch dimension
-        image = image.unsqueeze(0)
         
         # the labels in the csv for an image are lists represented as strings
         # e.g. "[10]" or "[670, 670]" (there can be multiple objects in the image)
@@ -28,9 +26,9 @@ class ResizedImagenetDataset(Dataset):
         image_labels = literal_eval(image_labels)
         
         # A 1 x 1000 dimensional vector 
-        target_vector = torch.zeros(1,1000)
+        target_vector = torch.zeros(1000)
         for idx in image_labels:
-            target_vector[0,idx] += 1
+            target_vector[idx] += 1
 
         target_vector /= len(image_labels)
         
