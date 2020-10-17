@@ -52,7 +52,7 @@ class gradCAM:
         self.gradient_hook.close()
 
     def generate_heatmap(self, image, class_label, is_counterfactual=False):
-        
+        pass
 
     def generate_heatmaps(self, image_batch, class_label_batch, is_counterfactual=False):
         self.reset()
