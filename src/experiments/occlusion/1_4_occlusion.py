@@ -176,7 +176,7 @@ def occlusion(model, images, label, prob, invert=True):
         
     return occlusion_maps
 
-df = pd.read_csv("../../../datasets/res2_2510.csv")
+df = pd.read_csv("../../../datasets/res2_120.csv")
 print("Running Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
 grad_cam_scores, guided_grad_cam_scores = calculate_rank_correlation(getVGGModel(16), layer=['features.29'], df=df, plot=False, use_pred=False)
 np.savetxt("result_gradcam.csv", grad_cam_scores, delimiter=",")
