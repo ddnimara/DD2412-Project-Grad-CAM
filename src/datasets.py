@@ -9,8 +9,6 @@ from torch.utils.data.dataloader import DataLoader
 import pandas as pd
 from PIL import Image
 
-from src.utilities import BoundingBox
-
 class ResizedImagenetDataset(Dataset):
     def __init__(self, csv_path, normalize=True):
         self.df = pd.read_csv(csv_path)
