@@ -43,9 +43,16 @@ def compute_iou(predicted, truth):
     truth_reshaped.append([truth[0], truth[3]])
 
     # Compute IoU using Polygon Library
-    poly_1 = Polygon(pred_reshaped)
-    poly_2 = Polygon(truth_reshaped)
-    iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
+    try:
+
+        poly_1 = Polygon(pred_reshaped)
+        poly_2 = Polygon(truth_reshaped)
+        iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
+    except:
+        print("Error!")
+        print("#############")
+        print("predicted", predicted)
+        print("truth", truth)
 
     return iou
 
@@ -168,7 +175,8 @@ def generateDataframe(directoryPath):
         return pd.read_pickle(pcl_file_name)
     else:
         # get xml and imagel lists
-        image_list = glob.glob(directoryPath + "\*.JPEG")
+        resized_image_directory = os.path.join(directoryPath, "resized")
+        image_list = glob.glob(resized_image_directory + "\*.JPEG")
         xml_directory = os.path.join(directoryPath, "val info")
         xml_list = glob.glob(xml_directory + "/*.xml")
         sizes = []
@@ -191,25 +199,46 @@ def generateDataframe(directoryPath):
         df["id"] = pd.Series(id)
         df["size"] = pd.Series(sizes)
         df["bounding box"] = pd.Series(bboxs)
+        removed_row_indeces=[]
         # resize:
         for index in range(df.shape[0]):
             row = df.iloc[index]
+            class_ids = row["id"]
+            class_names = row["name"]
+            clipped_indeces = []
             original_width = int(row["size"][0])
             original_hight = int(row["size"][1])
-            width_ratio = 224.0 / original_width
-            hight_ratio = 224.0 / original_hight
+            width_ratio = 256.0 / original_width
+            hight_ratio = 256.0 / original_hight
             bboxs = row["bounding box"]
-            for bbox in bboxs:
-                bbox[0] = int(width_ratio * bbox[0])
-                bbox[1] = int(hight_ratio * bbox[1])
-                bbox[2] = int(width_ratio * bbox[2])
-                bbox[3] = int(hight_ratio * bbox[3])
-
+            lower_bound = 16.0
+            upper_bound = 240.0
+            for bbox_index, bbox in enumerate(bboxs):
+                bbox[0] = int(max(lower_bound,min(width_ratio * bbox[0],upper_bound))) - int(lower_bound)
+                bbox[1] = int(max(lower_bound,min(hight_ratio * bbox[1],upper_bound))) - int(lower_bound)
+                bbox[2] = int(max(lower_bound,min(width_ratio * bbox[2],upper_bound))) - int(lower_bound)
+                bbox[3] = int(max(lower_bound,min(hight_ratio * bbox[3],upper_bound))) - int(lower_bound)
+                if bbox[1] == bbox[3] or bbox[0] == bbox[2]:  # if we clipped an object out of the image
+                    clipped_indeces.append(bbox_index)
+            if len(clipped_indeces) == len(bboxs):  # if we have clipped every bbox
+                print("I need to completely remove this")
+                print("at index", index)
+                print("bounding box:", bboxs)
+                removed_row_indeces.append(index)
+            elif len(clipped_indeces) > 0:  # if we clipped some of them
+                #print("I need to remove part of this")
+                #print("bbox before", bboxs)
+                df.at[index, "id"] = [i for j, i in enumerate(class_ids) if j not in clipped_indeces]
+                df.at[index, "name"] = [i for j, i in enumerate(class_names) if j not in clipped_indeces]
+                df.at[index, "bounding box"] = [i for j, i in enumerate(bboxs) if j not in clipped_indeces]
+                #print("bbox after", df.iloc[index].loc["bounding box"])
+        print("completely removed these indeces", removed_row_indeces)
+        df.drop(removed_row_indeces, inplace=True)
         pd.to_pickle(df, pcl_file_name)
         return df
 
 
-def testBatchLocalisation(model, df, layer=['features.42'], k = 1):  #.42
+def testBatchLocalisation(model, df, batch_size = 10, layer=['features.42'], k = 1):  #.42
     """ Computes IOU for a model using batches (work in progress)."""
 
     # Get device (so you can use gpu if possible)
@@ -226,7 +255,6 @@ def testBatchLocalisation(model, df, layer=['features.42'], k = 1):  #.42
     ])
     validationSet = dataSetILS(df, transformations)
 
-    batch_size = 10 # My gpu is running out of memory for more :(
     validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
 
     gcm = gradCAM(model, layer)
@@ -243,7 +271,7 @@ def testBatchLocalisation(model, df, layer=['features.42'], k = 1):  #.42
         topk = gcm.probs.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
         # loop through top k classes
         for classNumber in range(k):  # loop through likeliest predictions
-            batch_label = topk[:,classNumber]
+            batch_label = topk[:, classNumber]
 
             # generate the heatmaps
             map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
@@ -272,7 +300,7 @@ def testBatchLocalisation(model, df, layer=['features.42'], k = 1):  #.42
     print("success percentage", success_total)
     print("error localisation", 1 - success_total)
 
-def testBatchAccuracy(model, df, k = 1):  #.42
+def testBatchAccuracy(model, df, batch_size = 10, k = 1):  #.42
     """ Computes IOU for a model using batches (work in progress)."""
 
     # Get device (so you can use gpu if possible)
@@ -289,7 +317,6 @@ def testBatchAccuracy(model, df, k = 1):  #.42
     ])
     validationSet = dataSetILS(df, transformations)
 
-    batch_size = 20 # My gpu is running out of memory for more :(
     validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
 
     it = 0  # we will use to keep track of the batch location
@@ -329,20 +356,76 @@ def reshapeImagenetImages():
             print("i", i)
         image = Image.open(image_path)
         title = image_path.split("\\")[-1]
-        image_reshaped = transforms.Compose([transforms.Resize((224,224))])(image)
+        image_reshaped = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224)])(image)
         new_image_path = os.path.join(reshapedPath,title)
         image_reshaped.save(new_image_path)
         image.close()
 
 
 # print("Picking Dataframe")
-directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
-df = generateDataframe(directoryPath)
-# print("Updating its image list")
-image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
+# directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
+# df = generateDataframe(directoryPath)
+# # print("Updating its image list")
+# df_csv = pd.read_csv("../datasets/resized.csv")
+# image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
 # df_csv["path"] = pd.Series(image_list)
-# df_csv.to_csv("../datasets/res.csv")
-df["path"] = pd.Series(image_list)
-# print("Starting Localisation experiment on VGG")
-model = getGoogleModel()
-testBatchAccuracy(model, df, k=1)
+# df_csv.to_csv("../datasets/resized.csv")
+#
+# pd.set_option('display.max_colwidth', None)
+# print(df_csv.head())
+# df["path"] = pd.Series(image_list)
+# # print("Starting Localisation experiment on VGG")
+# model = getAlexNet()
+# testBatchAccuracy(model, df, k=1)
+# generateDataframe(directoryPath)
+
+# print("top 5 accuracies:")
+# print("googlenet:")
+# model = getGoogleModel()
+# testBatchAccuracy(model, df, batch_size=20, k=5)
+#
+# print("Alexnet:")
+# model = getAlexNet()
+# testBatchAccuracy(model, df, batch_size=20, k=5)
+#
+# print("VGG-16:")
+# model = getVGGModel()
+# testBatchAccuracy(model, df,  k=5)
+#
+# print("VGG-16 with batch norm")
+# model = getVGGModel(batchNorm=True)
+# testBatchLocalisation(model, df, k=5)
+
+# print("top 1 localisation:")
+# print("googlenet:")
+# model = getGoogleModel()
+# testBatchLocalisation(model, df, layer=['inception5b'], batch_size=20, k=1)
+#
+# print("Alexnet:")
+# model = getAlexNet()
+# testBatchLocalisation(model, df, layer=['features.11'],batch_size=20, k=1)
+
+# print("VGG-16:")
+# model = getVGGModel()
+# testBatchLocalisation(model, df,layer=['features.29'], k=1)
+
+# print("VGG-16 with batch norm")
+# model = getVGGModel(batchNorm=True)
+# testBatchLocalisation(model, df, layer=['features.42'], k=1)
+
+# print("top 5 localisation:")
+# print("googlenet:")
+# model = getGoogleModel()
+# testBatchLocalisation(model, df, layer=['inception5b'], batch_size=20, k=5)
+#
+# print("Alexnet:")
+# model = getAlexNet()
+# testBatchLocalisation(model, df, layer=['features.11'],batch_size=20, k=5)
+#
+# print("VGG-16:")
+# model = getVGGModel()
+# testBatchLocalisation(model, df,layer=['features.29'], k=5)
+
+# print("VGG-16 with batch norm")
+# model = getVGGModel(batchNorm=True)
+# testBatchLocalisation(model, df, layer=['features.42'], k=5)

@@ -66,6 +66,7 @@ def get_hit_or_miss(model, df, layer, k = 1):
             for i in range(heatmap.shape[0]):  # iterate over batch
                 max_ind = np.unravel_index(heatmap[i].argmax(), heatmap[i].shape)
                 max_acts[it + i, classNumber] = heatmap[i].max()
+                #print("max ", max_acts[it+i,classNumber])
                 truthLabels = json.loads(df_view.iloc[i].loc["id"])
                 truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
                 
@@ -93,10 +94,72 @@ def get_localization_accuracy(hits_and_misses):
     miss = np.count_nonzero(hits_and_misses_firstcol == 0)
     return hit / (hit + miss)
 
+def getAccuracy(model, df, layer):
+    # Get device (so you can use gpu if possible)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+    df_count_size = df.shape[0]
+
+    # Create data loader
+    validationSet = dataSetILS(df, transforms)
+    batch_size = 1
+    validationLoader = torch.utils.data.DataLoader(validationSet, batch_size=batch_size, shuffle=False)
+
+    # Run Grad-CAM
+    gcm = gradCAM(model, layer)
+
+    it = 0  # we will use to keep track of the batch location
+
+    # Store whether the maximally activated point is within the corresponding bounding box.
+    # 0 if can't find corresponding ground truth (i.e. the prediction is wrong)
+    hit = np.zeros((df_count_size,1000))
+    total_count = 0
+
+    # Loop through batches
+    it = 0
+    for batch_images in tqdm(validationLoader):
+        batch_images = batch_images.to(device)
+        # df_view gives us access the dataframe on the batch window
+        df_view = df.iloc[it:min(it + batch_size, df_count_size)]
+        gcm.forward(batch_images)
+        # loop through top k classes
+
+        for i in range(df_view.shape[0]):
+            truthLabels = json.loads(df_view.iloc[i].loc["id"])
+            truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
+            for index, true_class in enumerate(truthLabels):  # loop through the true labels
+                #batch_label = np.array([truthLabels[0]])
+                #print("batch label", batch_label)
+                map = gcm.generateMapClass(truthLabels[0])
+                #map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
+                heatmap = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True,
+                                          rescale=False)
+
+                heatmap = heatmap[0]
+
+                max_ind = np.unravel_index(heatmap.argmax(), heatmap.shape)
+                bb = truthBoxes[index]
+                x_min, y_min, x_max, y_max = bb
+                x, y = max_ind[1], max_ind[0]
+                is_inside_box = (x >= x_min and x <= x_max and y >= y_min and y <= y_max)
+                if is_inside_box == True:
+                    hit[it + i, true_class] = 1
+            total_count += len(set(truthLabels)) # get unique classes
+            print("truth labels", truthLabels)
+            print("unique", len(set(truthLabels)))
+
+        it += batch_size
+
+    # Return a list of hits and misses + max activations
+    print("count", total_count)
+    total_hits = hit.sum()
+    print("hits", total_hits)
+    print("accuracy", total_hits/total_count)
+
 def get_localization_recall(hits_and_misses, good_predictions, max_acts, threshold=0.5):
     hits_and_misses_new = np.logical_or( \
         np.logical_and(hits_and_misses, max_acts >= threshold), \
-        #hits_and_misses,
         np.logical_and(np.logical_not(good_predictions), max_acts < threshold) \
         )
     hit = np.count_nonzero(hits_and_misses_new)
@@ -109,11 +172,17 @@ def pointing_game(model, layer, df, threshold=0.5):
     recall = get_localization_recall(hits_and_misses, good_predictions, max_acts, threshold=threshold)
     return accuracy, recall
 
-df = pd.read_csv("../../../datasets/res.csv")
-print("Running Pointing Game on VGG16...")
-accuracy, recall = pointing_game(getVGGModel(16), layer=['features.29'], df=df)  # features
-print("Accuracy: ", accuracy)
-print("Recall: ", recall)
+df = pd.read_csv("../../../datasets/resized.csv")
+# print("Running Pointing Game on VGG16...")
+# accuracy, recall = pointing_game(getVGGModel(16), layer=['features.29'], df=df)  # features
+# print("Accuracy: ", accuracy)
+# print("Recall: ", recall)
+print("computing accuracy on googlenet")
+getAccuracy(model =getGoogleModel(), layer = ['inception5b'], df=df)
+# print("Running Pointing Game on VGG16_bn...")
+# accuracy, recall = pointing_game(getVGGModel(16,batchNorm=True), layer=['features.42'], df=df)  # features
+# print("Accuracy: ", accuracy)
+# print("Recall: ", recall)
 
 # print("Running Pointing Game on GoogLeNet...")
 # accuracy, recall = pointing_game(getGoogleModel(), layer=['inception5b'], df=df)  # inception5b.branch4.1.conv
