@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-import json
+from ast import literal_eval
 
 # Measuring the localization accuracy of Grad-CAM in the context of the Pointing Game on 
 # the ILSVRC-12 val datasets, using VGG-16 and GoogLeNet
@@ -54,21 +54,23 @@ def get_hit_or_miss(model, df, layer, k = 1):
         gcm.forward(batch_images)
 
         # get top k classes (indeces)
-        topk = gcm.probs.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
+        _, topk = gcm.getTopK(k=k)
     
         # loop through top k classes
         for classNumber in range(k):  # loop through likeliest predictions
             batch_label = topk[:, classNumber]
+            
             # generate the heatmaps
-            map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
+            map = gcm.generateMapClassBatch(batch_label)
             heatmap = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True, rescale=False)
 
             for i in range(heatmap.shape[0]):  # iterate over batch
                 max_ind = np.unravel_index(heatmap[i].argmax(), heatmap[i].shape)
                 max_acts[it + i, classNumber] = heatmap[i].max()
-                #print("max ", max_acts[it+i,classNumber])
-                truthLabels = json.loads(df_view.iloc[i].loc["id"])
-                truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
+
+                truthLabels = literal_eval(df_view.iloc[i].loc["id"])
+                truthBoxes = literal_eval(df_view.iloc[i].loc["bounding box"])
+
                 
                 for index, true_class in enumerate(truthLabels):  # loop through the true labels
                     if int(true_class) != int(batch_label[i]):  # find matching object
@@ -126,8 +128,8 @@ def getAccuracy(model, df, layer):
         # loop through top k classes
 
         for i in range(df_view.shape[0]):
-            truthLabels = json.loads(df_view.iloc[i].loc["id"])
-            truthBoxes = json.loads(df_view.iloc[i].loc["bounding box"])
+            truthLabels = literal_eval(df_view.iloc[i].loc["id"])
+            truthBoxes = literal_eval(df_view.iloc[i].loc["bounding box"])
             for index, true_class in enumerate(truthLabels):  # loop through the true labels
                 #batch_label = np.array([truthLabels[0]])
                 #print("batch label", batch_label)

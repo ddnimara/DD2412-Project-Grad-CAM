@@ -59,8 +59,8 @@ class gradCAM:
                 self.gradientHooks[module[0]] = Hook(module[1],True)
 
     def getTopK(self,k):
-        """ Returns top k classes (based on the output probabilities) """
-        return [self.probs.sort(dim=1, descending=True)[1][0][i].item() for i in range(k)]
+        """ Returns top k probabilities and classes, respectively """
+        return self.probs.topk(k, dim = 1)
 
     def get_one_hot(self, class_label):
         """ Transforms class 'm' to corresponding one hot vector """
@@ -78,9 +78,11 @@ class gradCAM:
         #self.reset()
         self.forward(image)
         map = []
-        mostLikelyClasses = self.getTopK(k)
+        _, mostLikelyClasses = self.getTopK(k)
+        mostLikelyClasses = mostLikelyClasses[0]
+        
         for classes in mostLikelyClasses:
-            class_label = torch.tensor(np.array([classes])).type(torch.int64)
+            class_label = torch.tensor(np.array([int(classes)])).type(torch.int64)
             self.backward(class_label)
             map.append([self.activationHooks, self.gradientHooks])  # in guided backprop we want dy/dx so we need the grad of the image
         return map

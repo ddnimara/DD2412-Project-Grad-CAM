@@ -80,7 +80,6 @@ def gradientToImage(gradient):
 def gradientToImageBatch(gradient):
     """ Similar to gradientToImage, but works with batches """
     gradientNumpy = gradient.cpu().numpy().transpose(0, 2, 3, 1)  #
-    print('batch numpy', gradientNumpy.shape)
     gradientNumpy = (gradientNumpy - gradientNumpy.min())
     gradientNumpy = gradientNumpy / gradientNumpy.max()
 

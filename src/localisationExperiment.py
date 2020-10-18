@@ -100,13 +100,16 @@ def gradCamLocalisation(image_path, k = 1, layerList = ['features']):
     image = image.unsqueeze(0)  # add 'batch' dimension
     gm.forward(image)
     imagenetClasses = getImageNetClasses()
-    topk = gm.getTopK(k)
+    _, topk = gm.getTopK(k)
+    topk = topk[0]
+    
     # loop through top k classes
     for i in range(len(topk)):
-        map = gm.generateMapClass(topk[i])
+        cl = int(topk[i])
+        map = gm.generateMapClass(cl)
         for layers in layerList:
-            className = imagenetClasses[topk[i]]
-            heatmap = gm.generateCam(map, layers, im_path, guided=True, counterFactual=False)
+            className = imagenetClasses[cl]
+            heatmap = gm.generateCam(map, layers, im_path, mergeWithImage=True, counterFactual=False)
             print("heatmap shape", heatmap.shape)
             file_name = className + 'GradCAM'
             heatmap = heatmapThreshold(heatmap)
@@ -268,14 +271,15 @@ def testBatchLocalisation(model, df, batch_size = 10, layer=['features.42'], k =
         gcm.forward(batch_images)
 
         # get top k classes (indeces)
-        topk = gcm.probs.sort(dim=1, descending=True)[1].cpu().numpy()[:,:k]
+        _, topk = gcm.getTopK(k=k)
+        
         # loop through top k classes
         for classNumber in range(k):  # loop through likeliest predictions
             batch_label = topk[:, classNumber]
 
             # generate the heatmaps
-            map = gcm.generateMapClassBatch(torch.from_numpy(batch_label).to(device))
-            heatmap = gcm.generateCam(map, layer[0], image_path = None, mergeWithImage = False, isBatch= True)
+            map = gcm.generateMapClassBatch(batch_label)
+            heatmap = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True)
 
             for i in range(heatmap.shape[0]):  # iterate over batch
                 truthLabels = df_view.iloc[i].loc["id"]
