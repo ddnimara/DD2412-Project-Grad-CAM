@@ -5,14 +5,13 @@ import src.methods.new_grad_cam as ngc
 from src.utilities import *
 from src.dataSetLoader import *
 import matplotlib.pyplot as plt
-from os import path
-import cv2
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
 from scipy.stats import spearmanr
 from ast import literal_eval
+from skimage.transform import resize
 
 # Evaluating faithfulness via image occlusion by calculating the rank correlation of patches that change the CNN
 # score and patches that have high heatmap values for Grad-CAM and Guided Grad-CAM on the ILSVRC-12 val
@@ -84,21 +83,6 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
             # Normalize the occlusion map
             occlusion_map = occlusion_map - occlusion_map.min()
             occlusion_map = occlusion_map / occlusion_map.max()
-
-            # Calculate rank correlation between each heatmap and the occlusion map
-            # Get ranks
-            grad_cam_hm_rank = get_rank(grad_cam_hm)
-            guided_grad_cam_hm_rank = get_rank(guided_grad_cam_hm)
-            occlusion_map_rank = get_rank(occlusion_map)
-            
-            # Grad-CAM heatmap
-            grad_cam_coeff, grad_cam_p = spearmanr(grad_cam_hm_rank, occlusion_map_rank)
-            grad_cam_scores.append(grad_cam_coeff)
-            
-            # Guided Grad-CAM heatmap
-            guided_grad_cam_coeff, guided_grad_cam_p = spearmanr(guided_grad_cam_hm_rank, occlusion_map_rank)
-            guided_grad_cam_scores.append(guided_grad_cam_coeff)
-            print(grad_cam_coeff, guided_grad_cam_coeff)
             
             # Plot images
             if plot:
@@ -115,6 +99,27 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
                 plt.imshow(occlusion_map, cmap=plt.cm.bwr_r, vmin=0, vmax=1)
                 plt.colorbar()
                 plt.show()
+            
+            # Downsample the maps
+            new_size = (14, 14)
+            grad_cam_hm = resize(grad_cam_hm, new_size)
+            guided_grad_cam_hm = resize(guided_grad_cam_hm, new_size)
+            occlusion_map = resize(occlusion_map, new_size)
+
+            # Calculate rank correlation between each heatmap and the occlusion map
+            # Get ranks
+            grad_cam_hm_rank = get_rank(grad_cam_hm)
+            guided_grad_cam_hm_rank = get_rank(guided_grad_cam_hm)
+            occlusion_map_rank = get_rank(occlusion_map)
+            
+            # Grad-CAM heatmap
+            grad_cam_coeff, grad_cam_p = spearmanr(grad_cam_hm_rank, occlusion_map_rank)
+            grad_cam_scores.append(grad_cam_coeff)
+            
+            # Guided Grad-CAM heatmap
+            guided_grad_cam_coeff, guided_grad_cam_p = spearmanr(guided_grad_cam_hm_rank, occlusion_map_rank)
+            guided_grad_cam_scores.append(guided_grad_cam_coeff)
+            print(grad_cam_coeff, guided_grad_cam_coeff)
             
         it += batch_size
         
