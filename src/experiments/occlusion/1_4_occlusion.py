@@ -133,8 +133,8 @@ def occlusion(model, images, label, prob, invert=True):
     original_images = images.clone()
     
     nr, ch, h, w = images.shape
-    block_h = 25 # Path height
-    block_w = 25 # patch width
+    block_h = 45 # Path height
+    block_w = 45 # patch width
     mean = 0.5 # Color used for padding and filling the patches (should be gray by default)
     batch_s = 50 # Number of modified images to collect for forward pass
     

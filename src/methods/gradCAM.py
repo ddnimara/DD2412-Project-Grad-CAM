@@ -88,7 +88,7 @@ class gradCAM:
 
     def generateMapClass(self, classLabel=242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        class_label = torch.tensor(np.array([classLabel])).type(torch.int64)#.to(self.device)
+        class_label = torch.tensor(np.array([classLabel])).type(torch.int64).to(self.device)
         self.backward(class_label)
         map = [self.activationHooks, self.gradientHooks]
         return map
