@@ -1,14 +1,16 @@
 import torch
 from PIL import Image
-from torchvision import transforms
+from torchvision import transforms as transf
 
 # Transforms from imagenet
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
-transforms = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean, std)
+transforms = transf.Compose([
+    transf.ToTensor(),
+    transf.Normalize(mean, std)
 ])
+
+to_tensor_transform = transf.ToTensor()
 
 
 class dataSetILS(torch.utils.data.Dataset):
