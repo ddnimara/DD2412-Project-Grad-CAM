@@ -148,8 +148,6 @@ def getAccuracy(model, df, layer):
                 if is_inside_box == True:
                     hit[it + i, true_class] = 1
             total_count += len(set(truthLabels)) # get unique classes
-            print("truth labels", truthLabels)
-            print("unique", len(set(truthLabels)))
 
         it += batch_size
 
@@ -179,8 +177,8 @@ df = pd.read_csv("../../../datasets/resized.csv")
 # accuracy, recall = pointing_game(getVGGModel(16), layer=['features.29'], df=df)  # features
 # print("Accuracy: ", accuracy)
 # print("Recall: ", recall)
-print("computing accuracy on googlenet")
-getAccuracy(model =getGoogleModel(), layer = ['inception5b'], df=df)
+#print("computing accuracy on googlenet")
+getAccuracy(model = getVGGModel(batchNorm=True), layer = ['features.42'], df=df)
 # print("Running Pointing Game on VGG16_bn...")
 # accuracy, recall = pointing_game(getVGGModel(16,batchNorm=True), layer=['features.42'], df=df)  # features
 # print("Accuracy: ", accuracy)

@@ -28,7 +28,6 @@ class gradCAM:
         self.activationHooks = {}  # dictionary layername -> activation
         self.gradientHooks = {}  # layername -> gradient
         self.layers = importantLayer
-
         self.populateHooks()
 
     def removeHooks(self):
@@ -89,7 +88,7 @@ class gradCAM:
 
     def generateMapClass(self, classLabel=242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        class_label = torch.tensor(np.array([classLabel])).type(torch.int64).to(self.device)
+        class_label = torch.tensor(np.array([classLabel])).type(torch.int64)#.to(self.device)
         self.backward(class_label)
         map = [self.activationHooks, self.gradientHooks]
         return map
@@ -108,7 +107,7 @@ class gradCAM:
         if counterFactual:
             gradient = - gradient
         # compute a_k coefficient by performing a avg pool operation on the gradients
-        a_k = F.adaptive_avg_pool2d(gradient,1)
+        a_k = F.adaptive_avg_pool2d(gradient, 1)
 
         # take the sum and pass it through the relu
         cam = (activation * a_k).sum(dim = 1, keepdim=True)  # we want [batch, channels, h, w] so we need to keep the channel dim

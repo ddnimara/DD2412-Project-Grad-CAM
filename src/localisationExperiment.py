@@ -366,6 +366,8 @@ def reshapeImagenetImages():
         image.close()
 
 
+
+# df_csv = pd.read_csv("../datasets/res2_120.csv")
 # print("Picking Dataframe")
 # directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
 # df = generateDataframe(directoryPath)

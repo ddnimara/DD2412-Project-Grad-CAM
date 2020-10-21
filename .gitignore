@@ -134,3 +134,6 @@ dmypy.json
 .pyre/
 datasets/res.csv
 datasets/res.csv
+datasets/res2_120.csv
+src/experiments/occlusion/result_gradcam.csv
+src/experiments/occlusion/result_guided_gradcam.csv
