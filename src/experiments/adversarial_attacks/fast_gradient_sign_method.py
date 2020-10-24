@@ -1,7 +1,7 @@
 import src.models as models
 from src.datasets import ResizedImagenetDataset
 from src.methods.adversarial_attacks import FastGradientSignMethod
-from src.methods.new_grad_cam import gradCAM
+from src.methods.new_grad_cam import GradCAM
 
 from torch.utils.data.dataloader import DataLoader
 from numpy.random import randint
@@ -29,19 +29,19 @@ while True:
     if perturbed_image is None:
         continue
     
-    grad_cam = gradCAM(model, 'features.29')
+    grad_cam = GradCAM(model, 'features.29')
     
     true_class = int(torch.argmax(label[0]))
     
     # 1. Grad-CAM on original image for true class
     heatmap = grad_cam.generate_heatmap(image, true_class)
-    gradCAM.plot_heatmap(image, heatmap, axes[1,0])
+    GradCAM.plot_heatmap(image, heatmap, axes[1,0])
     # 2. Grad-CAM on perturbed image for true class
     heatmap = grad_cam.generate_heatmap(perturbed_image, true_class)
-    gradCAM.plot_heatmap(perturbed_image, heatmap, axes[1,1])
+    GradCAM.plot_heatmap(perturbed_image, heatmap, axes[1,1])
     # 2. Grad-CAM on perturbed image for predicted class
     heatmap = grad_cam.generate_heatmap(perturbed_image, new_prediction)
-    gradCAM.plot_heatmap(perturbed_image, heatmap, axes[1,2])
+    GradCAM.plot_heatmap(perturbed_image, heatmap, axes[1,2])
     
     plt.show()
     
