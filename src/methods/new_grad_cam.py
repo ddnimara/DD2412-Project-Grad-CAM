@@ -4,6 +4,7 @@ from src.utilities import *
 import cv2
 from torch.nn import functional as F
 from matplotlib import pyplot as plt
+
 class Hook:
     def __init__(self, module, is_backward=False):
         self.module = module
@@ -20,7 +21,7 @@ class Hook:
     def close(self):
         self.hook.remove()
 
-class gradCAM:
+class GradCAM:
     def __init__(self, model, layer_name):
         self.model = model
         self.model.eval()
@@ -51,28 +52,24 @@ class gradCAM:
         self.activation_hook.close()
         self.gradient_hook.close()
 
-    def generate_heatmap(self, image, class_label, is_counterfactual=False):
-        pass
-
     def generate_heatmaps(self, image_batch, class_label_batch, is_counterfactual=False):
         self.reset()
         self.logits = self.model.forward(image_batch)
-
         self.model.zero_grad()
         self.logits.backward(gradient = self.get_one_hot(class_label_batch),
                              retain_graph = True)
         
         activations = self.activation_hook.output
         gradients = self.gradient_hook.output[0]
-        
         if is_counterfactual:
             gradients = - gradients
         
         weights = F.adaptive_avg_pool2d(gradients, 1)
-        
         heatmaps = F.relu((activations * weights).sum(dim = 1, keepdim = True))
         # Upscale the heatmaps to match image size
-        heatmaps = F.interpolate(heatmaps, image_batch.shape[2:], mode='bilinear', align_corners = False)
+        heatmaps = heatmaps - heatmaps.min()
+        heatmaps = heatmaps / heatmaps.max()
+        heatmaps = F.interpolate(heatmaps, image_batch.shape[2:], mode='bicubic', align_corners = False)
         heatmaps = heatmaps.cpu().detach().numpy().transpose(0,2,3,1)
         return heatmaps
     
@@ -87,7 +84,9 @@ class gradCAM:
         # reformat it to represent an image. 
         # also adjust it's colours (to be the same as in the paper)
         heatmap = heatmap - heatmap.min()
-        heatmap = heatmap / heatmap.max()
+        max_value = heatmap.max()
+        if max_value > 0:
+            heatmap = heatmap / max_value
         image = torch.clamp(image, 0,1)
         heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)

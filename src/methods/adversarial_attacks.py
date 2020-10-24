@@ -1,5 +1,5 @@
 from src.utilities import getImageNetClasses
-from src.methods.new_grad_cam import gradCAM
+from src.methods.new_grad_cam import GradCAM
 
 import torch
 from torch.functional import F
