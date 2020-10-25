@@ -71,7 +71,7 @@ def plot_heatmaps(model, df, layer, use_pred=False):
             guided_grad_cam_hm = heatmaps_guided[i]
             
             # Grad-CAM heatmap
-            ngc.gradCAM.plot_heatmap(batch_images_unn[i], grad_cam_hm)
+            ngc.GradCAM.plot_heatmap(batch_images_unn[i], grad_cam_hm)
             # plt.axis("off")
             plt.show()
             

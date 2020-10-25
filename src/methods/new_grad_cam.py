@@ -80,7 +80,7 @@ class GradCAM:
         return one_hot
     
     @staticmethod
-    def plot_heatmap(image, heatmap, axis=None):
+    def plot_heatmap(image, heatmap, axis=None, ratio=(0.3, 0.7)):
         # reformat it to represent an image. 
         # also adjust it's colours (to be the same as in the paper)
         heatmap = heatmap - heatmap.min()
@@ -90,7 +90,7 @@ class GradCAM:
         image = torch.clamp(image, 0,1)
         heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).cpu().numpy().transpose(1,2,0)), 0.3, heatmap, 0.7, 0)
+        combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).cpu().numpy().transpose(1,2,0)), ratio[0], heatmap, ratio[1], 0)
         
         if axis is not None:
             axis.imshow(combined_image)

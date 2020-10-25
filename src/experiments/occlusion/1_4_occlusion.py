@@ -87,7 +87,7 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
             # Plot images
             if plot:
                 # Grad-CAM heatmap
-                ngc.gradCAM.plot_heatmap(batch_images[i], grad_cam_hm)
+                ngc.GradCAM.plot_heatmap(batch_images[i], grad_cam_hm)
                 plt.show()
                 
                 # Guided Grad-CAM heatmap
