@@ -23,7 +23,7 @@ class FastGradientSignMethod:
         self.imagenet_classes = getImageNetClasses()   
 
     def generate_attack(self, unnormalized_image, normalized_image, 
-                        target, epsilon = 0.07):     
+                        target, epsilon = 0.07, save_dir=None):     
         if (target[0] != 0).sum() > 1:
             print("ERROR: Adversarial attacks are not yet implemented for multi-labeled examples!")
             return None
@@ -59,22 +59,21 @@ class FastGradientSignMethod:
         print("Succesful attack!")
         axes = self.visualize(unnormalized_image, noise, epsilon,
                              true_label, original_confidence,
-                             new_prediction, new_confidence)
+                             new_prediction, new_confidence,
+                             save_dir)
             
         return perturbed_image, new_prediction, axes
     
     def visualize(self, unnormalized_image, noise, epsilon,
                   original_prediction, original_confidence,
-                  new_prediction, new_confidence):
-
+                  new_prediction, new_confidence, save_dir=None):
         fig, axes = plt.subplots(2,3)
         for axis in axes.flatten():
             axis.axis("off")
-            
         # 1. Original image
-        title = "{} ({:.2f})".format(self.imagenet_classes[original_prediction],
-                                     original_confidence)
-        axes[0, 0].set_title(title)
+        title_orig = "{} ({:.2f})".format(self.imagenet_classes[original_prediction],
+                                    original_confidence)
+        axes[0, 0].set_title(title_orig)
         axes[0, 0].imshow(unnormalized_image.squeeze().detach().numpy().transpose(1,2,0))
         
         # 2. Noise
@@ -83,10 +82,19 @@ class FastGradientSignMethod:
         axes[0, 1].imshow((noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0))
         
         # 3. Perturbed image 
-        title = "{} ({:.2f})".format(self.imagenet_classes[new_prediction],
-                                     new_confidence)
-        axes[0, 2].set_title(title)
+        title_pert = "{} ({:.2f})".format(self.imagenet_classes[new_prediction],
+                                    new_confidence)
+        axes[0, 2].set_title(title_pert)
         perturbed_image = unnormalized_image + epsilon * noise
         axes[0, 2].imshow(torch.clamp(perturbed_image, 0, 1).squeeze().detach().numpy().transpose(1,2,0))
         
+        if save_dir is not None:
+            orig_image = torch.clamp(unnormalized_image, 0, 1).squeeze().detach().numpy().transpose(1,2,0)
+            noise_image = (noise * 0.5 + 0.5).squeeze().numpy().transpose(1,2,0)
+            pert_image = torch.clamp(perturbed_image, 0, 1).squeeze().detach().numpy().transpose(1,2,0)
+            
+            plt.imsave(save_dir + "/orig_" + title_orig + ".png", orig_image)
+            plt.imsave(save_dir + "/noise.png", noise_image)
+            plt.imsave(save_dir + "/pert_" + title_pert + ".png", pert_image)
+            
         return axes
