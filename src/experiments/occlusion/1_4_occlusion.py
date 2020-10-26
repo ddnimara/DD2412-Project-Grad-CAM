@@ -37,6 +37,7 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
     it = 0  # we will use to keep track of the batch location
     grad_cam_scores = []
     guided_grad_cam_scores = []
+    guided_backprop_scores = []
     
     # Loop through batches
     for batch_images in tqdm(validationLoader):
@@ -75,10 +76,12 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
             # Fetch maps corresponding to current iteration
             grad_cam_hm = heatmaps[i]
             guided_grad_cam_hm = heatmaps_guided[i]
+            guided_backprop_hm = gradientNumpy[i]
             occlusion_map = occlusion_maps[i]
                 
-            # Convert heatmap to grayscale image (Guided Grad-CAM)
+            # Convert heatmap to grayscale image (Guided Grad-CAM, Guided Backprop)
             guided_grad_cam_hm = np.dot(guided_grad_cam_hm[..., :3], [0.2989, 0.5870, 0.1140])
+            guided_backprop_hm = np.dot(guided_backprop_hm[..., :3], [0.2989, 0.5870, 0.1140])
             
             # Normalize the occlusion map
             occlusion_map = occlusion_map - occlusion_map.min()
@@ -92,7 +95,10 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
                 
                 # Guided Grad-CAM heatmap
                 plt.imshow(guided_grad_cam_hm, cmap=plt.get_cmap('gray'))
-                plt.colorbar()
+                plt.show()
+                
+                # Guided Backprop heatmap
+                plt.imshow(guided_backprop_hm, cmap=plt.get_cmap('gray'))
                 plt.show()
                 
                 # Occlusion map
@@ -104,27 +110,34 @@ def calculate_rank_correlation(model, df, layer, plot=False, use_pred=False):
             new_size = (14, 14)
             grad_cam_hm = resize(grad_cam_hm, new_size)
             guided_grad_cam_hm = resize(guided_grad_cam_hm, new_size)
+            guided_backprop_hm = resize(guided_backprop_hm, new_size)
             occlusion_map = resize(occlusion_map, new_size)
 
             # Calculate rank correlation between each heatmap and the occlusion map
             # Get ranks
             grad_cam_hm_rank = get_rank(grad_cam_hm)
             guided_grad_cam_hm_rank = get_rank(guided_grad_cam_hm)
+            guided_backprop_hm_rank = get_rank(guided_backprop_hm)
             occlusion_map_rank = get_rank(occlusion_map)
             
             # Grad-CAM heatmap
-            grad_cam_coeff, grad_cam_p = spearmanr(grad_cam_hm_rank, occlusion_map_rank)
+            grad_cam_coeff, _ = spearmanr(grad_cam_hm_rank, occlusion_map_rank)
             grad_cam_scores.append(grad_cam_coeff)
             
             # Guided Grad-CAM heatmap
-            guided_grad_cam_coeff, guided_grad_cam_p = spearmanr(guided_grad_cam_hm_rank, occlusion_map_rank)
+            guided_grad_cam_coeff, _ = spearmanr(guided_grad_cam_hm_rank, occlusion_map_rank)
             guided_grad_cam_scores.append(guided_grad_cam_coeff)
-            print(grad_cam_coeff, guided_grad_cam_coeff)
+            
+            # Guided Backprop heatmap
+            guided_backprop_coeff, _ = spearmanr(guided_backprop_hm_rank, occlusion_map_rank)
+            guided_backprop_scores.append(guided_backprop_coeff)
+            
+            print(grad_cam_coeff, guided_grad_cam_coeff, guided_backprop_coeff)
             
         it += batch_size
         
     # Return a list of hits and misses + max activations
-    return np.array(grad_cam_scores), np.array(guided_grad_cam_scores)
+    return np.array(grad_cam_scores), np.array(guided_grad_cam_scores), np.array(guided_backprop_scores)
 
 def get_rank(map):
     return np.argsort(map.flatten())
@@ -136,7 +149,7 @@ def occlusion(model, images, label, prob, invert=True):
     block_h = 45 # Path height
     block_w = 45 # patch width
     mean = 0.5 # Color used for padding and filling the patches (should be gray by default)
-    batch_s = 50 # Number of modified images to collect for forward pass
+    batch_s = 160 # Number of modified images to collect for forward pass
     
     occlusion_maps = np.empty((nr, h, w))
     
@@ -182,9 +195,12 @@ def occlusion(model, images, label, prob, invert=True):
     return occlusion_maps
 
 df = pd.read_csv("../../../datasets/res2_120.csv")
-print("Running Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
-grad_cam_scores, guided_grad_cam_scores = calculate_rank_correlation(getVGGModel(16), layer=['features.29'], df=df, plot=False, use_pred=False)
+print("Running Rank Correlation experiment on VGG16 and calculating rank correlation with occlusion maps...")
+grad_cam_scores, guided_grad_cam_scores, guided_backprop_scores = \
+    calculate_rank_correlation(getVGGModel(16), layer=['features.29'], df=df, plot=False, use_pred=False)
 np.savetxt("result_gradcam.csv", grad_cam_scores, delimiter=",")
 np.savetxt("result_guided_gradcam.csv", guided_grad_cam_scores, delimiter=",")
+np.savetxt("result_guided_backprop.csv", guided_backprop_scores, delimiter=",")
 print("[Grad-CAM] Average score: ", np.average(grad_cam_scores))
 print("[Guided Grad-CAM] Average score: ", np.average(guided_grad_cam_scores))
+print("[Guided Backpropagation] Average score: ", np.average(guided_backprop_scores))
