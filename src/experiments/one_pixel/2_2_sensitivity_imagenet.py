@@ -41,7 +41,8 @@ def sensitivity(model, layer, results_file, plot=False):
     validationSetOriginal = dataSetILS(df)
     validationSet = dataSetILS(df, transforms)
     
-    heatmap_activations = []
+    heatmap_activations_before = []
+    heatmap_activations_after = []
     
     for index, row in results.iterrows():
         ind = row['index']
@@ -63,11 +64,15 @@ def sensitivity(model, layer, results_file, plot=False):
         for prob, label in zip(probs, labels):
             print(float(prob), imagenetClasses[int(label)])
         print()
-
         # Plot heatmap
         imageOriginalTensor = to_tensor_transform(imageOriginal)
         map = gcm.generateMapClass(labels[0])
         heatmap = gcm.generateCam(map, layer[0], image_path=None, isBatch=False, rescale=False, mergeWithImage=False)
+        
+        heatmap_activation = heatmap[arr[0], arr[1]]
+        print("Relevant pixel in heatmap (before):", heatmap_activation)
+        heatmap_activations_before.append(heatmap_activation)
+        print()
         
         if plot:
             ngc.GradCAM.plot_heatmap(imageOriginalTensor, heatmap, ratio=(0.5, 0.5))
@@ -81,6 +86,12 @@ def sensitivity(model, layer, results_file, plot=False):
         im_array[arr[0], arr[1], 0] = arr[2]
         im_array[arr[0], arr[1], 1] = arr[3]
         im_array[arr[0], arr[1], 2] = arr[4]
+    
+        # Plot new image
+        if plot:
+            plt.imshow(im_array)
+            plt.scatter(arr[1], arr[0], s=80, facecolors='none', edgecolors='r')
+            plt.show()
 
         # Perturb image
         image = perturb_image(arr, image)
@@ -97,14 +108,15 @@ def sensitivity(model, layer, results_file, plot=False):
             print(float(prob), imagenetClasses[int(label)])
         print()
 
-        heatmap_activation = heatmap[arr[0], arr[1]]
-        print("Relevant pixel in heatmap:", heatmap_activation)
-        heatmap_activations.append(heatmap_activation)
-
         # Plot heatmap
         im_array = to_tensor_transform(im_array)
         map = gcm.generateMapClass(labels[0])
         heatmap = gcm.generateCam(map, layer[0], image_path=None, isBatch=False, rescale=False, mergeWithImage=False)
+
+        heatmap_activation = heatmap[arr[0], arr[1]]
+        print("Relevant pixel in heatmap (after):", heatmap_activation)
+        heatmap_activations_after.append(heatmap_activation)
+        print()
         
         if plot:
             ngc.GradCAM.plot_heatmap(im_array, heatmap, ratio=(0.5, 0.5))
@@ -113,12 +125,32 @@ def sensitivity(model, layer, results_file, plot=False):
             
         print("---------------------------------------------------")
     
-    return np.array(heatmap_activations)
+    return np.array(heatmap_activations_before), np.array(heatmap_activations_after)
     
 # VGG-16
-heatmap_activations = sensitivity(model=getVGGModel(16), layer=['features.29'], results_file="results_VGG16.csv")
-print("Average:", np.average(heatmap_activations))
-print("Standard deviation:", np.std(heatmap_activations))
+heatmap_activations_before, heatmap_activations_after = sensitivity(model=getVGGModel(16), layer=['features.29'], results_file="results_VGG16.csv", plot=False)
+print("Heatmap activations (before):")
+print("Average:", np.average(heatmap_activations_before))
+print("Standard deviation:", np.std(heatmap_activations_before))
+print("Minimum:", np.min(heatmap_activations_before))
+print("Maximum:", np.max(heatmap_activations_before))
+print()
+print("Heatmap activations (after):")
+print("Average:", np.average(heatmap_activations_after))
+print("Standard deviation:", np.std(heatmap_activations_after))
+print("Minimum:", np.min(heatmap_activations_after))
+print("Maximum:", np.max(heatmap_activations_after))
 
 # GoogLeNet
-# heatmap_activations = sensitivity(model=getGoogleModel(), layer=['inception5b'], results_file="results_GoogLeNet.csv")
+# heatmap_activations_before, heatmap_activations_after = sensitivity(model=getGoogleModel(), layer=['inception5b'], results_file="results_GoogLeNet.csv", plot=False)
+# print("Heatmap activations (before):")
+# print("Average:", np.average(heatmap_activations_before))
+# print("Standard deviation:", np.std(heatmap_activations_before))
+# print("Minimum:", np.min(heatmap_activations_before))
+# print("Maximum:", np.max(heatmap_activations_before))
+# print()
+# print("Heatmap activations (after):")
+# print("Average:", np.average(heatmap_activations_after))
+# print("Standard deviation:", np.std(heatmap_activations_after))
+# print("Minimum:", np.min(heatmap_activations_after))
+# print("Maximum:", np.max(heatmap_activations_after))
