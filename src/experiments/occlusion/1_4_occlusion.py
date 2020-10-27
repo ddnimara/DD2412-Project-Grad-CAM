@@ -136,7 +136,7 @@ def occlusion(model, images, label, prob, invert=True):
     block_h = 45 # Path height
     block_w = 45 # patch width
     mean = 0.5 # Color used for padding and filling the patches (should be gray by default)
-    batch_s = 50 # Number of modified images to collect for forward pass
+    batch_s = 40 # Number of modified images to collect for forward pass
     
     occlusion_maps = np.empty((nr, h, w))
     
@@ -154,8 +154,7 @@ def occlusion(model, images, label, prob, invert=True):
                 image = original_images[n].clone().unsqueeze(0)
                 image[:, :, i:(i + block_h), j:(j + block_w)] = mean
                 images_to_process.append(image)
-                
-                # If the desired number of images have been collected or this is the last iteration 
+                # If the desired number of images have been collected or this is the last iteration
                 if (it + 1) % batch_s == 0 or i == h - 1 and j == w - 1:
                     # Forward pass
                     images_to_process = torch.cat(images_to_process, dim=0)
@@ -184,7 +183,20 @@ def occlusion(model, images, label, prob, invert=True):
 df = pd.read_csv("../../../datasets/res2_120.csv")
 print("Running Grad-CAM on VGG16 and calculating rank correlation with occlusion maps...")
 grad_cam_scores, guided_grad_cam_scores = calculate_rank_correlation(getVGGModel(16), layer=['features.29'], df=df, plot=False, use_pred=False)
-np.savetxt("result_gradcam.csv", grad_cam_scores, delimiter=",")
-np.savetxt("result_guided_gradcam.csv", guided_grad_cam_scores, delimiter=",")
-print("[Grad-CAM] Average score: ", np.average(grad_cam_scores))
-print("[Guided Grad-CAM] Average score: ", np.average(guided_grad_cam_scores))
+# np.savetxt("result_gradcam.csv", grad_cam_scores, delimiter=",")
+# np.savetxt("result_guided_gradcam.csv", guided_grad_cam_scores, delimiter=",")
+# print("[Grad-CAM] Average score: ", np.average(grad_cam_scores))
+# print("[Guided Grad-CAM] Average score: ", np.average(guided_grad_cam_scores))
+# pd.set_option('display.max_rows', None)
+# pd.set_option('display.max_columns', None)
+# pd.set_option('display.width', None)
+# pd.set_option('display.max_colwidth', None)
+#
+# path = os.path.abspath("../../../datasets/ILSVRC2012 val/resized")
+# print(path)
+# paths = df['path']
+#
+# for p in paths:
+#     print(os.path.join(path,p.split("\\")[-1]))
+
+

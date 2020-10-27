@@ -369,10 +369,17 @@ def reshapeImagenetImages():
 
 # df_csv = pd.read_csv("../datasets/res2_120.csv")
 # print("Picking Dataframe")
-# directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
-# df = generateDataframe(directoryPath)
+directoryPath = r"C:\Users\dumit\Documents\GitHub\DD2412-Project-Grad-CAM\datasets\ILSVRC2012 val"
+df = generateDataframe(directoryPath)
 # # print("Updating its image list")
-# df_csv = pd.read_csv("../datasets/resized.csv")
+df_csv = pd.read_csv("../datasets/resized.csv")
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', -1)
+
+print(df.iloc[510:530])
+
 # image_list = glob.glob(os.path.join(directoryPath,"resized") + "\*.JPEG")
 # df_csv["path"] = pd.Series(image_list)
 # df_csv.to_csv("../datasets/resized.csv")

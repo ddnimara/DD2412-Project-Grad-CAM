@@ -112,7 +112,6 @@ class gradCAM:
         # take the sum and pass it through the relu
         cam = (activation * a_k).sum(dim = 1, keepdim=True)  # we want [batch, channels, h, w] so we need to keep the channel dim
         cam = F.relu(cam)
-
         #interpolate to original image dimensions
         cam = F.interpolate(cam, self.image.shape[2:], mode = 'bilinear', align_corners=False)
 

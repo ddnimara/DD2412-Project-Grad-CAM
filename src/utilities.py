@@ -71,8 +71,11 @@ def gradientToImage(gradient):
         the pixel values in [0,1] (float)"""
 
     gradientNumpy = gradient[0].cpu().numpy().transpose(1, 2, 0)  #
-    gradientNumpy = (gradientNumpy - gradientNumpy.min())
-    gradientNumpy = gradientNumpy/gradientNumpy.max()
+    for i in range(gradientNumpy.shape[0]):
+
+        gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
+        if gradientNumpy[i].max() > 0:
+            gradientNumpy[i] = gradientNumpy[i] / gradientNumpy[i].max()
 
     return gradientNumpy
 
@@ -80,19 +83,26 @@ def gradientToImage(gradient):
 def gradientToImageBatch(gradient):
     """ Similar to gradientToImage, but works with batches """
     gradientNumpy = gradient.cpu().numpy().transpose(0, 2, 3, 1)  #
-    gradientNumpy = (gradientNumpy - gradientNumpy.min())
-    gradientNumpy = gradientNumpy / gradientNumpy.max()
+    for i in range(gradientNumpy.shape[0]):
+
+        gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
+        if gradientNumpy[i].max() > 0:
+            gradientNumpy[i] = gradientNumpy[i] / gradientNumpy[i].max()
 
     return gradientNumpy
 
 
 
 def tensorToHeatMap(tensor, rescale = True):
-    """ Same with gradientToImage (no idea why). I will filter it in later commits. """
-    gradientNumpy = tensor[0].detach().numpy().transpose(1, 2, 0)  #
+    """ Gradients seem to be of the form [batch_size, n_channels, w, h]
+        This method transforms it to (w,h,n_channels). It also transforms
+        the pixel values in [0,1] (float)"""
+    gradientNumpy = tensor[0].detach().cpu().numpy().transpose(1, 2, 0)  #
     if rescale:
         gradientNumpy = (gradientNumpy - gradientNumpy.min())
-        gradientNumpy = gradientNumpy/gradientNumpy.max()
+
+        if gradientNumpy.max() > 0:
+            gradientNumpy = gradientNumpy/gradientNumpy.max()
 
     return gradientNumpy
 
@@ -103,7 +113,8 @@ def tensorToHeatMapBatch(tensor, rescale = True):
     if rescale:
         for i in range(gradientNumpy.shape[0]):
             gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
-            gradientNumpy[i] = gradientNumpy[i]/gradientNumpy[i].max()
+            if gradientNumpy[i].max() > 0:
+                gradientNumpy[i] = gradientNumpy[i]/gradientNumpy[i].max()
 
 
     return gradientNumpy

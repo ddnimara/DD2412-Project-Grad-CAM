@@ -104,7 +104,7 @@ def generateGuidedBpForClass(model, image_path, targetClass, index, isVGG=True):
     # loop through top k classes
     className = imagenetClasses[targetClass]
     heatmap = gbb.generateMapClass(targetClass)
-    gradientNumpy = gradientToImage(heatmap)
+    gradientNumpy = tensorToHeatMap(heatmap)
     file_name = str(index) + '_guidedBackprop'
     if isVGG:
         file_name = file_name + '_VGG'
@@ -131,7 +131,7 @@ def generateGuidedGradCamForClass(model, image_path, targetClass, layerList, ind
     # loop through top k classes
     mapCAM = gm.generateMapClass(targetClass)
     mapGuidedBackProp = gbp.generateMapClass(targetClass)
-    gradientNumpy = gradientToImage(mapGuidedBackProp)
+    gradientNumpy = tensorToHeatMap(mapGuidedBackProp)
     for layers in layerList:
         heatmap = gm.generateCam(mapCAM, layers, im_path, mergeWithImage=False)
         finalMap = heatmap * gradientNumpy
@@ -177,7 +177,7 @@ def generateGuidedGradCamForClassTogether(model, image_path, targetClass, layerL
     # loop through top k classes
     mapCAM = gm.generateMapClass(targetClass)
     mapGuidedBackProp = gbp.generateMapClass(targetClass)
-    gradientNumpy = gradientToImage(mapGuidedBackProp)
+    gradientNumpy = tensorToHeatMap(mapGuidedBackProp)
     layers = layerList[0]
     heatmap = gm.generateCam(mapCAM, layers, im_path, mergeWithImage=False)
     finalMap = heatmap * gradientNumpy
@@ -194,7 +194,7 @@ def generateGuidedBpForClassTogether(model, image_path, targetClass):
     # loop through top k classes
     className = imagenetClasses[targetClass]
     heatmap = gbb.generateMapClass(targetClass)
-    gradientNumpy = gradientToImage(heatmap)
+    gradientNumpy = tensorToHeatMap(heatmap)
     return gradientNumpy
 
 

@@ -137,3 +137,13 @@ datasets/res.csv
 datasets/res2_120.csv
 src/experiments/occlusion/result_gradcam.csv
 src/experiments/occlusion/result_guided_gradcam.csv
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/batches.meta
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/data_batch_1
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/data_batch_2
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/data_batch_3
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/data_batch_4
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/data_batch_5
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/readme.html
+src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/test_batch
+src/experiments/datasets/CIFAR10/test/cifar-10-python.tar.gz
+src/experiments/contrastivity_and_fidelity/state_dicts/vgg16_bn.pt
