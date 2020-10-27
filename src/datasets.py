@@ -52,15 +52,10 @@ class ResizedImagenetDataset(Dataset):
         return default_transform
 
 class ResizedChestXRayDataset(Dataset):
-    def __init__(self, csv_path, image_folder):
+    def __init__(self, csv_path, image_folder, normalize=True):
         self.df = pd.read_csv(csv_path)
         self.image_folder = image_folder
-        
-        self.transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(mean = [0.485, 0.456, 0.406],
-                                 std = [0.229, 0.224, 0.225])
-        ])
+        self.transforms = self.init_transforms(normalize)
                 
         # The label order is taken from this csv:
         # https://raw.githubusercontent.com/gustavo-beck/DD2424-Deep_Learning-COVID-Project/master/xray_dataset/organized_dataset.csv
@@ -69,18 +64,17 @@ class ResizedChestXRayDataset(Dataset):
             "Cardiomegaly":        0,
             "Emphysema":           1,
             "Effusion":            2,
-            "No Finding":          3, 
-            "Hernia":              4,
-            "Infiltration":        5,
-            "Mass":                6,
-            "Nodule":              7,
-            "Atelectasis":         8,
-            "Pneumothorax":        9,
-            "Pleural_Thickening": 10,
-            "Pneumonia":          11,
-            "Fibrosis":           12,
-            "Edema":              13,
-            "Consolidation":      14
+            "Hernia":              3,
+            "Infiltrate":          4,
+            "Mass":                5,
+            "Nodule":              6,
+            "Atelectasis":         7,
+            "Pneumothorax":        8,
+            "Pleural_Thickening":  9,
+            "Pneumonia":          10,
+            "Fibrosis":           11,
+            "Edema":              12,
+            "Consolidation":      13
         }
         
         self.index_to_label = {v:k for k,v in self.label_to_index.items()}
@@ -94,11 +88,18 @@ class ResizedChestXRayDataset(Dataset):
         
         label = self.label_to_index[df_row['Finding Label']]
         
-        bounding_box = [df_row['Bbox [x'], df_row['y'], df_row['w'], df_row['h]']]
+        bounding_box = torch.Tensor([df_row['Bbox [x'], df_row['y'], df_row['w'], df_row['h]']])
         
         return image, label, bounding_box
     
     def __len__(self):
         return self.df.shape[0]
     
-        
+    def init_transforms(self, normalize):
+        if normalize:
+            return torchvision.transforms.Compose([
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(mean = [0.485, 0.456, 0.406],
+                                                 std = [0.229, 0.224, 0.225])])
+        else:
+            return torchvision.transforms.ToTensor()

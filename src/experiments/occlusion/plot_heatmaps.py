@@ -69,15 +69,18 @@ def plot_heatmaps(model, df, layer, use_pred=False):
             # Fetch maps corresponding to current iteration
             grad_cam_hm = heatmaps[i]
             guided_grad_cam_hm = heatmaps_guided[i]
+            guided_backprop_hm = gradientNumpy[i]
             
             # Grad-CAM heatmap
-            ngc.gradCAM.plot_heatmap(batch_images_unn[i], grad_cam_hm)
-            # plt.axis("off")
+            ngc.GradCAM.plot_heatmap(batch_images_unn[i], grad_cam_hm)
             plt.show()
             
             # Guided Grad-CAM heatmap
             plt.imshow(guided_grad_cam_hm, cmap=plt.get_cmap('gray'))
-            # plt.axis("off")
+            plt.show()
+                
+            # Guided Backprop heatmap
+            plt.imshow(guided_backprop_hm)
             plt.show()
             
         it += batch_size
