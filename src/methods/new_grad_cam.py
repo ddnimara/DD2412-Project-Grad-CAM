@@ -81,24 +81,36 @@ class GradCAM:
         return one_hot
     
     @staticmethod
-    def plot_heatmap(image, heatmap, axis=None, ratio=(0.3, 0.7), save_file=None):
+    def plot_heatmap(image, heatmap, axis=None, ratio=(0.3, 0.7), save_file=None, clip = False):
         # reformat it to represent an image. 
         # also adjust it's colours (to be the same as in the paper)
         heatmap = heatmap - heatmap.min()
         max_value = heatmap.max()
+        inv_normalize = transforms.Normalize(
+            mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.255],
+            std=[1 / 0.229, 1 / 0.224, 1 / 0.255]
+        )
+
         if max_value > 0:
             heatmap = heatmap / max_value
-        image = torch.clamp(image, 0,1)
+
+        if clip:
+            indeces = heatmap[:, :, 0] < 0.20
+        image = inv_normalize(image)
         heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        combined_image = cv2.addWeighted(np.uint8(255 * image.detach().squeeze(dim=0).cpu().numpy().transpose(1,2,0)), ratio[0], heatmap, ratio[1], 0)
-        
+        img_np = image.detach().squeeze(dim=0).cpu().numpy().transpose(1,2,0)
+        combined_image = cv2.addWeighted(np.uint8(255 * img_np), ratio[0], heatmap, ratio[1], 0)
+        if clip:
+            print(combined_image.shape)
+            combined_image[indeces, :] = np.uint8(255*img_np[indeces, :])
         if save_file is not None:
             plt.imsave(save_file, combined_image)
         elif axis is not None:
             axis.imshow(combined_image)
         else:
             plt.imshow(combined_image)
+        return combined_image
 
 class GradCAM_plusplus(GradCAM):
     def __init__(self, model, layer_name):
@@ -113,15 +125,14 @@ class GradCAM_plusplus(GradCAM):
         
         activations = self.activation_hook.output
         gradients = self.gradient_hook.output[0]
-        
         grad2 = gradients.pow(2)
         grad3 = gradients.pow(3)
         activation_sum = activations.sum(dim=(2,3), keepdim=True)
         
-        alpha = grad2 / ( 2 * grad2 + activation_sum * grad3 + 1e-7)
-        weights = torch.sum(alpha * F.relu(gradients), dim=(2, 3), keepdim=True)
+        alpha = grad2 / (2 * grad2 + activation_sum * grad3 + 1e-7)
+        weights = torch.sum(alpha * F.relu(torch.exp(activations) * gradients), dim=(2, 3), keepdim=True)
         
-        heatmaps = F.relu(torch.sum(weights * torch.exp(activations), dim=1, keepdim=True))
+        heatmaps = F.relu(torch.sum(weights * activations, dim=1, keepdim=True))
         
         # Normalize each heatmap in the batch
         for i in range(heatmaps.shape[0]):
@@ -131,4 +142,4 @@ class GradCAM_plusplus(GradCAM):
         heatmaps = F.interpolate(heatmaps, image_batch.shape[2:], mode='bicubic', align_corners = False)
         heatmaps = heatmaps.detach().cpu().numpy().transpose(0,2,3,1)  
          
-        return heatmaps        
+        return heatmaps

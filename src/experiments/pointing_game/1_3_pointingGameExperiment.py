@@ -187,11 +187,11 @@ pcl_file_name = os.path.join(directoryPath, "dataframe")
 df = pd.read_pickle(pcl_file_name)
 print(df.head())
 # print("Running Pointing Game on VGG16...")
-# accuracy, recall = pointing_game(getVGGModel(), layer=['features.29'], df=df)  # features
-# print("Accuracy: ", accuracy)
-# print("Recall: ", recall)
+accuracy, recall = pointing_game(getGoogleModel(), layer=['inception5b'], df=df)  # features
+print("Accuracy: ", accuracy)
+print("Recall: ", recall)
 #print("computing accuracy on googlenet")
-getAccuracy(model = getGoogleModel(), layer = ['inception5b'], df=df)  # 42
+# getAccuracy(model = getGoogleModel(), layer = ['inception5b'], df=df)  # 42
 # print("Running Pointing Game on VGG16_bn...")
 # accuracy, recall = pointing_game(getVGGModel(16,batchNorm=True), layer=['features.42'], df=df)  # features
 # print("Accuracy: ", accuracy)

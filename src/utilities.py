@@ -71,18 +71,16 @@ def gradientToImage(gradient):
         the pixel values in [0,1] (float)"""
 
     gradientNumpy = gradient[0].cpu().numpy().transpose(1, 2, 0)  #
-    for i in range(gradientNumpy.shape[0]):
+    gradientNumpy -= gradientNumpy.min()
+    gradientNumpy/= gradientNumpy.max()
 
-        gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())
-        if gradientNumpy[i].max() > 0:
-            gradientNumpy[i] = gradientNumpy[i] / gradientNumpy[i].max()
 
     return gradientNumpy
 
 
 def gradientToImageBatch(gradient):
     """ Similar to gradientToImage, but works with batches """
-    gradientNumpy = gradient.cpu().numpy().transpose(0, 2, 3, 1)  #
+    gradientNumpy = gradient.cpu().numpy().transpose(0, 2, 3, 1)
     for i in range(gradientNumpy.shape[0]):
 
         gradientNumpy[i] = (gradientNumpy[i] - gradientNumpy[i].min())

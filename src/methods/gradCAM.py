@@ -88,7 +88,7 @@ class gradCAM:
 
     def generateMapClass(self, classLabel=242):  # 242 -> boxer in imagenet
         """ Work in Progress: (should print heatmap). Returns gradient maps on the specified class """
-        class_label = torch.tensor(np.array([classLabel])).type(torch.int64).to(self.device)
+        class_label = torch.tensor(np.array([classLabel])).type(torch.int64)#.to(self.device)
         self.backward(class_label)
         map = [self.activationHooks, self.gradientHooks]
         return map
@@ -99,7 +99,7 @@ class gradCAM:
         map = [self.activationHooks, self.gradientHooks]
         return map
 
-    def generateCam(self, hooks, layer, image_path, mergeWithImage = True, counterFactual = False, isBatch = False, rescale = True):
+    def generateCam(self, hooks, layer, image_path, mergeWithImage = True, counterFactual = False, isBatch = False, rescale = True, clip = False):
         """ Generates CAMs. """
         # Get activation A_k and the gradients dy/dA_k
         activation = hooks[0][layer].output
@@ -123,6 +123,7 @@ class gradCAM:
             numpyCam = tensorToHeatMap(cam, rescale= rescale)
         if mergeWithImage:  # Normal grad-cam wants to impose the heatmap over the image
             # reformat it to represent an image. Also adjust it's colours (to be the same as in the paper)
+
             heatmap = cv2.applyColorMap(np.uint8(255 * numpyCam), cv2.COLORMAP_JET)
 
             # get original image via path
@@ -130,7 +131,10 @@ class gradCAM:
 
             # combine them
             finalImage = cv2.addWeighted(heatmap, 0.7, originalImage, 0.3, 0)
-
+            print("im",finalImage.shape)
+            if clip:
+                indeces = numpyCam[:,:,0] < 0.20
+                finalImage[indeces,:] = originalImage[indeces,:]
             # make it rgb (cv2 by default is bgr for some reason)
             finalImage = cv2.cvtColor(finalImage, cv2.COLOR_BGR2RGB)
         else:  # guided gradcam simply wants the heatmap

@@ -31,15 +31,15 @@ def fidelity(model, layer, loader, visualize=False, percentile=50, dataset="MNIS
     accuracy_before = np.zeros(data_size)
     it = 0
     print(accuracy_before.shape)
-    # with torch.no_grad():
-    #     for data, target in tqdm(loader):
-    #         data, target = data.to(device), target.to(device)
-    #
-    #         output = F.softmax(model(data), dim=1)
-    #         output_np = output.detach().cpu().numpy()
-    #         ar = np.array([output_np[i][target[i]] for i in range(data.shape[0])])
-    #         accuracy_before[it:it + data.shape[0]] = ar
-    #         it += data.shape[0]
+    with torch.no_grad():
+        for data, target in tqdm(loader):
+            data, target = data.to(device), target.to(device)
+
+            output = F.softmax(model(data), dim=1)
+            output_np = output.detach().cpu().numpy()
+            ar = np.array([output_np[i][target[i]] for i in range(data.shape[0])])
+            accuracy_before[it:it + data.shape[0]] = ar
+            it += data.shape[0]
 
     print("before", accuracy_before)
 
@@ -90,6 +90,7 @@ def fidelity(model, layer, loader, visualize=False, percentile=50, dataset="MNIS
     print("before", accuracy_before)
     print("after", accuracy_after)
     print("fidelity", (accuracy_before - accuracy_after).mean())
+    return (accuracy_before - accuracy_after).mean()
 
 
 def contrastivity_batch(positive, negative):
@@ -161,6 +162,7 @@ def contrastivity(model, layer, loader, visualize=True, percentile=50, dataset="
         it += data.shape[0]
 
     print("final result", contrastivity.mean())
+    return contrastivity.mean()
 
 
 def fidelityShap(model, fit_loader, loader, visualize=True, percentile=50, dataset="MNIST"):
@@ -222,7 +224,7 @@ def fidelityShap(model, fit_loader, loader, visualize=True, percentile=50, datas
                 # plt.show()
         output = shap_model(images_copy)
         output_np = output.detach().cpu().numpy()
-        ar = np.array([output_np[i][target[i]] for i in range(data.shape[0])])
+        ar = np.array([output_np[i][positive[i]] for i in range(data.shape[0])])
         accuracy_after[it:it + data.shape[0]] = ar
         it += data.shape[0]
 
@@ -230,6 +232,7 @@ def fidelityShap(model, fit_loader, loader, visualize=True, percentile=50, datas
     print("before", accuracy_before)
     print("after", accuracy_after)
     print("fidelity", (accuracy_before - accuracy_after).mean())
+    return (accuracy_before - accuracy_after).mean()
 
 
 def contrastivityShap(model, fit_loader, loader, visualize=True, percentile=50, dataset="MNIST"):
@@ -276,6 +279,7 @@ def contrastivityShap(model, fit_loader, loader, visualize=True, percentile=50, 
         contrastivity[it:it + batch_size] = compute_contrastivity(binarized_heatmaps, positive)
         it += data.shape[0]
     print("final result", contrastivity.mean())
+    return contrastivity.mean()
 
 
 def fidelityIG(model, loader, visualize=False, percentile=50, dataset="MNIST"):
@@ -343,6 +347,7 @@ def fidelityIG(model, loader, visualize=False, percentile=50, dataset="MNIST"):
     print("before", accuracy_before)
     print("after", accuracy_after)
     print("fidelity", (accuracy_before - accuracy_after).mean())
+    return (accuracy_before - accuracy_after).mean()
 
 
 def contrastivityIG(model, loader, visualize=True, percentile=50, dataset="MNIST"):
@@ -389,3 +394,4 @@ def contrastivityIG(model, loader, visualize=True, percentile=50, dataset="MNIST
         it += data.shape[0]
 
     print("final result", contrastivity.mean())
+    return contrastivity.mean()

@@ -147,3 +147,5 @@ src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/readme.html
 src/experiments/datasets/CIFAR10/test/cifar-10-batches-py/test_batch
 src/experiments/datasets/CIFAR10/test/cifar-10-python.tar.gz
 src/experiments/contrastivity_and_fidelity/state_dicts/vgg16_bn.pt
+src/experiments/contrastivity_and_fidelity/contrastivity_IG10.csv
+src/experiments/contrastivity_and_fidelity/contrastivity_IG1.csv

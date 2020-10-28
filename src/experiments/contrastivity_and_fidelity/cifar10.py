@@ -16,8 +16,8 @@ model.load_state_dict(torch.load('state_dicts/googlenet.pt'))
 print(model)
 mean = [0.4914, 0.4822, 0.4465]
 std = [0.2023, 0.1994, 0.2010]
-batch_size_train = 4
-batch_size_test = 4
+batch_size_train = 2
+batch_size_test = 2
 transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize(mean, std)])
@@ -30,7 +30,7 @@ train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train
 testset = CIFAR10(root='.../../../datasets/CIFAR10/test', train=False,
                                        download=True, transform=transform)
 test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,
-                                         shuffle=False)
+                                         shuffle=True)
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -77,7 +77,92 @@ def evaluate(model, loader, device):
         loss_avg = loss/size
     return accuracy, loss_avg
 
+def visualize(model,layer,  fit_loader, loader, number_of_images=1):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    # shap
+    batch = next(iter(fit_loader))
+    images, _ = batch
+    background = images[:50].to(device)
+    shap_model = shapModel(model)
+    shap_model.eval()
+    e = shap.DeepExplainer(shap_model, background)
+
+    # gcm
+    gcm = gradCAM(model, layer)
+
+    # ig
+    ig = IntegratedGradients(model)
+
+    batch = next(iter(loader))
+    images, target = batch
+    images, target = images.to(device), target.to(device)
+
+    # shap
+    shap_heatmaps = e.shap_values(images)
+    shap_heatmaps_np = [s.transpose(0, 2, 3, 1) for s in shap_heatmaps]
+
+    # gcm
+    gcm.forward(images)
+    map = gcm.generateMapClassBatch(target)
+    heatmaps = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True)\
+
+    # ig
+    baseline = torch.zeros(images.shape).to(device)
+    attributions, _ = ig.attribute(images, baseline, target=target, return_convergence_delta=True)
+
+    inv_normalize = transforms.Normalize(
+        mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.255],
+        std=[1 / 0.229, 1 / 0.224, 1 / 0.255]
+    )
+
+    for i in range(number_of_images):
+        # real
+        images[i] = inv_normalize(images[i])
+        image = images[i].cpu().numpy().transpose(1,2,0)
+
+        real_class = target[i].cpu().numpy()
+        print(real_class)
+        # shap
+        sample_shap_for_class = shap_heatmaps_np[real_class]
+        sample_shap = sample_shap_for_class[i,:,:,0]
+        sample_shap = np.clip(sample_shap, a_min = 0, a_max = 1)
+        sample_shap-=sample_shap.min()
+        sample_shap/=sample_shap.max()
+        # gradcam
+        heatmap_cam = heatmaps[i]
+
+        # ig
+        heatmap_ig = attributions[i].cpu().numpy()[0]
+        heatmap_ig= np.clip(heatmap_ig, a_min = 0, a_max = 1)
+        heatmap_ig-=heatmap_ig.min()
+        heatmap_ig/= heatmap_ig.max()
+        fig = plt.figure()
+        ax1 = fig.add_subplot(141)
+        ax1.imshow(image)
+
+        ax1.title.set_text("Original Image")
+
+        ax2 = fig.add_subplot(142)
+        ax2.imshow(sample_shap)
+        ax2.title.set_text("SHAP")
+
+        ax3 = fig.add_subplot(143)
+        ax3.imshow(heatmap_cam)
+        ax3.title.set_text("Grad CAM")
+
+        ax4 = fig.add_subplot(144)
+        ax4.imshow(heatmap_ig)
+        ax4.title.set_text("Integrated Gradients")
+
+        plt.show()
 
 layer = ['inception5b']
+result = np.zeros(2)
 
-fidelityShap(model, train_loader, test_loader, percentile=50)
+contrastivity(model, layer, test_loader, percentile=10)
+# for p in [1,10]:
+#     print("IG contrastivity")
+#     print("p = ", p)
+#     contrastivity_ig =  np.array([contrastivityIG(model,test_loader, percentile = p)])
+#     np.savetxt("contrastivity_IG{}.csv".format(p), contrastivity_ig, delimiter=",")

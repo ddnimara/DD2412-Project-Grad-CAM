@@ -126,12 +126,80 @@ def infoOfModel(model):
         print("layer", layer)
         print("name", name)
 
+def visualize(model,layer,  fit_loader, loader, number_of_images=1):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # shap
+    batch = next(iter(fit_loader))
+    images, _ = batch
+    background = images[:50].to(device)
+    shap_model = shapModel(model)
+    shap_model.eval()
+    e = shap.DeepExplainer(shap_model, background)
+
+    # gcm
+    gcm = gradCAM(model, layer)
+
+    # ig
+    ig = IntegratedGradients(model)
+
+    batch = next(iter(loader))
+    images, target = batch
+    images, target = images.to(device), target.to(device)
+
+    # shap
+    shap_heatmaps = e.shap_values(images)
+    shap_heatmaps_np = [s.transpose(0, 2, 3, 1) for s in shap_heatmaps]
+
+    # gcm
+    gcm.forward(images)
+    map = gcm.generateMapClassBatch(target)
+    heatmaps = gcm.generateCam(map, layer[0], image_path=None, mergeWithImage=False, isBatch=True)\
+
+    # ig
+    baseline = torch.zeros(images.shape).to(device)
+    attributions, _ = ig.attribute(images, baseline, target=target, return_convergence_delta=True)
+
+
+    for i in range(number_of_images):
+        # real
+        image = images[i].cpu().numpy()[0]
+        real_class = target[i].cpu().numpy()
+        print(real_class)
+        # shap
+        sample_shap_for_class = shap_heatmaps_np[real_class]
+        sample_shap = sample_shap_for_class[i,:,:,0]
+        # gradcam
+        heatmap_cam = heatmaps[i]
+
+        # ig
+        heatmap_ig = attributions[i].cpu().numpy()[0]
+
+        fig = plt.figure()
+        ax1 = fig.add_subplot(141)
+        ax1.imshow(image)
+
+        ax1.title.set_text("Original Image")
+
+        ax2 = fig.add_subplot(142)
+        ax2.imshow(sample_shap)
+        ax2.title.set_text("SHAP")
+
+        ax3 = fig.add_subplot(143)
+        ax3.imshow(heatmap_cam)
+        ax3.title.set_text("Grad CAM")
+
+        ax4 = fig.add_subplot(144)
+        ax4.imshow(heatmap_ig)
+        ax4.title.set_text("Integrated Gradients")
+
+        plt.show()
+
 
 model = torch.load('model.pt')
 model.eval()
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #model.to(device)
-print(model)
+# print(model)
 layer = ['conv_layers']
 
-# contrastivityShap(model, train_loader,test_loader, percentile=1)
+# visualize(model, layer, train_loader, test_loader, number_of_images=10)
+eval()
