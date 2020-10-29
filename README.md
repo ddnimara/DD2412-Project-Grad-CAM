@@ -11,6 +11,8 @@ The scope of this project was to reproduce the findings of [Grad-CAM](https://ar
 1. Propose a novel experiment for evaluating Grad-CAM's [sensitivity](https://arxiv.org/abs/1703.01365).
 1. Compare Grad-CAM with Integrated Gradients and SHAP in regards to [contrastivity and fidelity](https://openaccess.thecvf.com/content_CVPR_2019/papers/Pope_Explainability_Methods_for_Graph_Convolutional_Neural_Networks_CVPR_2019_paper.pdf)
 
+For more information, please refer to our [report](https://github.com/ddnimara/DD2412-Project-Grad-CAM/blob/main/Grad-CAM%20Explanation%20Analysis.pdf)
+
 ## Task 1
 
 
