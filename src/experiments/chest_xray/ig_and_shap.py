@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import cv2
 from captum.attr import IntegratedGradients, GradientShap
 import src.experiments.chest_xray.xray_localization as xl
-from src.methods.gradCAM import *
+from src.methods.new_grad_cam import GradCAM, GradCAM_plusplus
 from src.datasets import ResizedChestXRayDataset
 
 def experiment(dataset_csv, image_folder, model_name="chexnet", method="ig", plot=False):
@@ -50,12 +50,12 @@ def experiment(dataset_csv, image_folder, model_name="chexnet", method="ig", plo
     
     return np.array(scores)
 
-def experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", plot=False):
+def experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", method="gradcam", plot=False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Load dataset
     dataset = ResizedChestXRayDataset(dataset_csv, image_folder)
-    batch_size = 16
+    batch_size = 25
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     # Load model
@@ -64,7 +64,10 @@ def experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", plot=Fal
     model.eval()
         
     # Load method
-    gcm = gradCAM(model, [layer_name])
+    if method == 'gradcam':
+        gcm = GradCAM(model, layer_name)
+    else:
+        gcm = GradCAM_plusplus(model, layer_name)
     
     scores = []
 
@@ -74,9 +77,7 @@ def experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", plot=Fal
         labels = labels.to(device)
         
         # Calculate heatmap
-        gcm.forward(images)
-        mapCam = gcm.generateMapClassBatch(labels)
-        heatmaps = gcm.generateCam(mapCam, layer_name, image_path=None, mergeWithImage=False, isBatch=True)
+        heatmaps = gcm.generate_heatmaps(images, labels)
         
         for image, label, true_bbox, heatmap in zip(images, labels, true_bboxes, heatmaps):
             score = process_attributions(heatmap, image=image, label=label, true_bbox=true_bbox, 
@@ -116,7 +117,7 @@ def process_attributions(attributions, image, label, true_bbox, plot=False, tran
         plt.show()
     
     # Thresholding
-    attributions = (attributions > 0.5) * attributions
+    attributions = (attributions > 0.85) * attributions
     
     if plot:
         ax = plt.gca()
@@ -188,7 +189,20 @@ print("Mean:", np.average(scores))
 print("Standard deviation:", np.std(scores))
 print()
 
-#######################################################################################xx
+#######################################################################################
+scores = experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", method="gradcamplusplus", plot=False)
+np.savetxt("result_chexnet_gradcamplusplus.csv", scores, delimiter=",")
+print("Chexnet, Grad-CAM++:")
+print("Mean:", np.average(scores))
+print("Standard deviation:", np.std(scores))
+print()
+
+scores = experiment_gradcam(dataset_csv, image_folder, model_name="covid-pretrained", method="gradcamplusplus", plot=False)
+np.savetxt("result_covid_pretrained_gradcamplusplus.csv", scores, delimiter=",")
+print("Covid pre-trained, Grad-CAM++:")
+print("Mean:", np.average(scores))
+print("Standard deviation:", np.std(scores))
+print()
 
 scores = experiment_gradcam(dataset_csv, image_folder, model_name="chexnet", plot=False)
 np.savetxt("result_chexnet_gradcam.csv", scores, delimiter=",")
@@ -199,7 +213,7 @@ print()
 
 scores = experiment_gradcam(dataset_csv, image_folder, model_name="covid-pretrained", plot=False)
 np.savetxt("result_covid_pretrained_gradcam.csv", scores, delimiter=",")
-print("Chexnet, Grad-CAM:")
+print("Covid pre-trained, Grad-CAM:")
 print("Mean:", np.average(scores))
 print("Standard deviation:", np.std(scores))
 print()

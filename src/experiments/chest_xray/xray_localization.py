@@ -158,4 +158,3 @@ def compute_iou(predicted_bbox, true_bbox):
 
 if __name__ == "__main__":
     main()
-    
