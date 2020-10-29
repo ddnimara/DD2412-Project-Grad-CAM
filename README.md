@@ -73,4 +73,5 @@ We measure fidelity (highlighted feature relevance to result) and contrastivity 
 <img src="/images_for_readme/contrastivity_and_fidelity.png">
 
 ## Robustness to adversarial attacks
+Grac-CAM exhibits robustness to adversarial attacks: Even when the network gets tricked into misclassifying an image, the visualization remains focused and virtually unchanged.
 <img src="/images_for_readme/adversarial.png">
